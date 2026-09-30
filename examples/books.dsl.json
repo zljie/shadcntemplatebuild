@@ -1,0 +1,225 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "books-management",
+  "name": "图书管理",
+  "shell": {
+    "variant": "contextual",
+    "version": "0.1.0",
+    "workspaceName": "Acme Workspace"
+  },
+  "root": [
+    {
+      "id": "workspace",
+      "componentRef": "region.workspace",
+      "componentVersion": "0.1.0",
+      "props": {},
+      "layout": {},
+      "tokens": {},
+      "responsive": {},
+      "slots": {
+        "children": [
+          {
+            "id": "book-page-header",
+            "componentRef": "pattern.page-header",
+            "componentVersion": "0.1.0",
+            "props": {
+              "title": "图书管理",
+              "description": "查看馆藏图书、库存与借阅状态。"
+            },
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [],
+            "meta": {
+              "locked": false
+            }
+          },
+          {
+            "id": "book-search-bar",
+            "componentRef": "composite.search-bar",
+            "componentVersion": "0.1.0",
+            "props": {
+              "placeholder": "搜索书名或作者…"
+            },
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [],
+            "meta": {
+              "locked": false
+            }
+          },
+          {
+            "id": "book-table",
+            "componentRef": "composite.data-table",
+            "componentVersion": "0.1.0",
+            "props": {
+              "density": "comfortable"
+            },
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [
+              {
+                "event": "row.select",
+                "capabilityRef": "context.open"
+              }
+            ],
+            "meta": {
+              "locked": false
+            }
+          }
+        ]
+      },
+      "actions": [],
+      "meta": {
+        "locked": true
+      }
+    },
+    {
+      "id": "context",
+      "componentRef": "composite.context-panel",
+      "componentVersion": "0.1.0",
+      "props": {
+        "title": "图书详情"
+      },
+      "layout": {},
+      "tokens": {},
+      "responsive": {},
+      "slots": {
+        "children": [
+          {
+            "id": "book-details",
+            "componentRef": "composite.resource-details",
+            "componentVersion": "0.1.0",
+            "props": {},
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [],
+            "meta": {
+              "locked": false
+            }
+          }
+        ]
+      },
+      "actions": [],
+      "meta": {
+        "locked": true
+      }
+    }
+  ],
+  "dependencies": {
+    "pageSchema": "0.1.0",
+    "componentRegistry": "0.1.0",
+    "designTokens": "provisional-0.1.0",
+    "codeGenerator": "0.1.0"
+  },
+  "listDetail": {
+    "entityName": "图书",
+    "dataSource": "example",
+    "fields": [
+      {
+        "key": "title",
+        "label": "书名",
+        "type": "text"
+      },
+      {
+        "key": "author",
+        "label": "作者",
+        "type": "text"
+      },
+      {
+        "key": "category",
+        "label": "分类",
+        "type": "text"
+      },
+      {
+        "key": "inventory",
+        "label": "库存",
+        "type": "number"
+      },
+      {
+        "key": "loanStatus",
+        "label": "借阅状态",
+        "type": "text"
+      }
+    ],
+    "titleField": "title",
+    "columns": [
+      {
+        "field": "title",
+        "title": "书名"
+      },
+      {
+        "field": "author",
+        "title": "作者"
+      },
+      {
+        "field": "category",
+        "title": "分类"
+      },
+      {
+        "field": "inventory",
+        "title": "库存"
+      },
+      {
+        "field": "loanStatus",
+        "title": "借阅状态"
+      }
+    ],
+    "searchFields": [
+      "title",
+      "author"
+    ],
+    "filters": [
+      "category",
+      "loanStatus"
+    ],
+    "detailFields": [
+      "title",
+      "author",
+      "category",
+      "inventory",
+      "loanStatus"
+    ],
+    "rows": [
+      {
+        "id": "book-01",
+        "title": "雾港来信",
+        "author": "林遥",
+        "category": "悬疑小说",
+        "inventory": 6,
+        "loanStatus": "可借阅"
+      },
+      {
+        "id": "book-02",
+        "title": "月球园丁手记",
+        "author": "周弦",
+        "category": "科幻小说",
+        "inventory": 0,
+        "loanStatus": "已借完"
+      },
+      {
+        "id": "book-03",
+        "title": "纸上群岛",
+        "author": "顾澄",
+        "category": "文学小说",
+        "inventory": 3,
+        "loanStatus": "可借阅"
+      },
+      {
+        "id": "book-04",
+        "title": "风与齿轮的下午",
+        "author": "沈禾",
+        "category": "少儿读物",
+        "inventory": 1,
+        "loanStatus": "借阅中"
+      }
+    ]
+  }
+}

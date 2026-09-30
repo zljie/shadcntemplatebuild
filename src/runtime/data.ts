@@ -9,3 +9,37 @@ export const resources:Resource[]=[
 {id:"res-07",name:"会议纪要",description:"将会议记录整理为决策、待办和负责人。",type:"Skill",status:"草稿",version:"0.2.0",updated:"2026-09-15",author:"Operations"},
 {id:"res-08",name:"数据探索助手",description:"分析表格数据，识别趋势和异常。",type:"Skill",status:"已发布",version:"1.0.0",updated:"2026-09-14",author:"Data Team"},
 ];
+
+export type RecordValue = string | number | boolean;
+export type DataRecord = { id: string; [key: string]: RecordValue };
+export type ListDetail = {
+  entityName: string;
+  fields: { key: string; label: string; type: "text" | "number" | "boolean"; trueLabel?: string; falseLabel?: string }[];
+  titleField: string;
+  descriptionField?: string;
+  columns: { field: string; title: string }[];
+  searchFields: string[];
+  filters: string[];
+  detailFields: string[];
+  rows: DataRecord[];
+  dataSource: "example";
+};
+export const resourceListDetail: ListDetail = {
+  entityName: "资源", dataSource: "example", titleField: "name", descriptionField: "description",
+  fields: [
+    { key: "name", label: "资源名称", type: "text" }, { key: "description", label: "描述", type: "text" },
+    { key: "type", label: "资源类型", type: "text" }, { key: "status", label: "发布状态", type: "text" },
+    { key: "version", label: "当前版本", type: "text" }, { key: "author", label: "维护团队", type: "text" },
+    { key: "updated", label: "最近更新", type: "text" },
+  ],
+  columns: [{field:"name",title:"资源名称"},{field:"type",title:"类型"},{field:"status",title:"状态"},{field:"updated",title:"更新时间"}],
+  searchFields: ["name", "description"], filters: ["type"], detailFields: ["status", "version", "author", "updated"], rows: resources,
+};
+export function displayValue(config: ListDetail, key: string, value: RecordValue): string {
+  const field = config.fields.find(field => field.key === key);
+  return typeof value === "boolean" ? (value ? field?.trueLabel ?? "是" : field?.falseLabel ?? "否") : String(value);
+}
+export function filterRows(config: ListDetail, query: string, filters: Record<string, string>): DataRecord[] {
+  return config.rows.filter(row => config.filters.every(key => filters[key] === undefined || String(row[key]) === filters[key]) &&
+    config.searchFields.map(key => displayValue(config, key, row[key])).join(" ").toLowerCase().includes(query.toLowerCase()));
+}

@@ -1,0 +1,213 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "users-management",
+  "name": "用户管理",
+  "shell": {
+    "variant": "contextual",
+    "version": "0.1.0",
+    "workspaceName": "Acme Workspace"
+  },
+  "root": [
+    {
+      "id": "workspace",
+      "componentRef": "region.workspace",
+      "componentVersion": "0.1.0",
+      "props": {},
+      "layout": {},
+      "tokens": {},
+      "responsive": {},
+      "slots": {
+        "children": [
+          {
+            "id": "user-page-header",
+            "componentRef": "pattern.page-header",
+            "componentVersion": "0.1.0",
+            "props": {
+              "title": "用户管理",
+              "description": "查看用户账号、角色与启用状态。"
+            },
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [],
+            "meta": {
+              "locked": false
+            }
+          },
+          {
+            "id": "user-search-bar",
+            "componentRef": "composite.search-bar",
+            "componentVersion": "0.1.0",
+            "props": {
+              "placeholder": "搜索姓名或账号…"
+            },
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [],
+            "meta": {
+              "locked": false
+            }
+          },
+          {
+            "id": "user-table",
+            "componentRef": "composite.data-table",
+            "componentVersion": "0.1.0",
+            "props": {
+              "density": "comfortable"
+            },
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [
+              {
+                "event": "row.select",
+                "capabilityRef": "context.open"
+              }
+            ],
+            "meta": {
+              "locked": false
+            }
+          }
+        ]
+      },
+      "actions": [],
+      "meta": {
+        "locked": true
+      }
+    },
+    {
+      "id": "context",
+      "componentRef": "composite.context-panel",
+      "componentVersion": "0.1.0",
+      "props": {
+        "title": "用户详情"
+      },
+      "layout": {},
+      "tokens": {},
+      "responsive": {},
+      "slots": {
+        "children": [
+          {
+            "id": "user-details",
+            "componentRef": "composite.resource-details",
+            "componentVersion": "0.1.0",
+            "props": {},
+            "layout": {},
+            "tokens": {},
+            "responsive": {},
+            "slots": {},
+            "actions": [],
+            "meta": {
+              "locked": false
+            }
+          }
+        ]
+      },
+      "actions": [],
+      "meta": {
+        "locked": true
+      }
+    }
+  ],
+  "dependencies": {
+    "pageSchema": "0.1.0",
+    "componentRegistry": "0.1.0",
+    "designTokens": "provisional-0.1.0",
+    "codeGenerator": "0.1.0"
+  },
+  "listDetail": {
+    "entityName": "用户",
+    "dataSource": "example",
+    "fields": [
+      {
+        "key": "name",
+        "label": "姓名",
+        "type": "text"
+      },
+      {
+        "key": "account",
+        "label": "账号",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "角色",
+        "type": "text"
+      },
+      {
+        "key": "enabled",
+        "label": "启用状态",
+        "type": "boolean",
+        "trueLabel": "启用",
+        "falseLabel": "停用"
+      }
+    ],
+    "titleField": "name",
+    "columns": [
+      {
+        "field": "name",
+        "title": "姓名"
+      },
+      {
+        "field": "account",
+        "title": "账号"
+      },
+      {
+        "field": "role",
+        "title": "角色"
+      },
+      {
+        "field": "enabled",
+        "title": "启用状态"
+      }
+    ],
+    "searchFields": [
+      "name",
+      "account"
+    ],
+    "filters": [
+      "role",
+      "enabled"
+    ],
+    "detailFields": [
+      "name",
+      "account",
+      "role",
+      "enabled"
+    ],
+    "rows": [
+      {
+        "id": "user-01",
+        "name": "陈星野",
+        "account": "chen.xingye",
+        "role": "管理员",
+        "enabled": true
+      },
+      {
+        "id": "user-02",
+        "name": "苏晚晴",
+        "account": "su.wanqing",
+        "role": "馆员",
+        "enabled": true
+      },
+      {
+        "id": "user-03",
+        "name": "陆知行",
+        "account": "lu.zhixing",
+        "role": "读者",
+        "enabled": false
+      },
+      {
+        "id": "user-04",
+        "name": "唐映雪",
+        "account": "tang.yingxue",
+        "role": "审计员",
+        "enabled": false
+      }
+    ]
+  }
+}

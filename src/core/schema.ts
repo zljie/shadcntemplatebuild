@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { spacing, tokenOptions, themeVersion } from "@/runtime/tokens";
-export { spacing } from "@/runtime/tokens";
+import type { ListDetail } from "../runtime/data";
+import { spacing, tokenOptions, themeVersion } from "../runtime/tokens";
+export { spacing } from "../runtime/tokens";
 
 export const versions = { pageSchema: "0.1.0", componentRegistry: "0.1.0", designTokens: themeVersion, codeGenerator: "0.1.0" } as const;
 export const layoutSchema = z.object({
@@ -34,11 +35,21 @@ export const nodeSchema: z.ZodType<PageNode> = z.lazy(() => z.object({
   slots: z.record(z.string(), z.array(nodeSchema).max(500)),
   actions: z.array(actionSchema).max(1), meta: z.object({locked: z.boolean()}).strict(),
 }).strict());
+const fieldKey = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/).refine(key => !["id", "__proto__", "constructor", "prototype"].includes(key), "保留字段名");
+export const listDetailSchema: z.ZodType<ListDetail> = z.object({
+  entityName: z.string().min(1).max(20), dataSource: z.literal("example"),
+  fields: z.array(z.object({key: fieldKey, label: z.string().min(1).max(40), type: z.enum(["text", "number", "boolean"]), trueLabel: z.string().max(40).optional(), falseLabel: z.string().max(40).optional()}).strict()).min(1).max(20),
+  titleField: fieldKey, descriptionField: fieldKey.optional(),
+  columns: z.array(z.object({field: fieldKey, title: z.string().min(1).max(40)}).strict()).min(1).max(10),
+  searchFields: z.array(fieldKey).min(1).max(20), filters: z.array(fieldKey).max(3), detailFields: z.array(fieldKey).min(1).max(20),
+  rows: z.array(z.object({id:z.string().min(1).max(80)}).catchall(z.union([z.string().max(1000), z.number().finite(), z.boolean()]))).max(200),
+}).strict();
 export const pageSchema = z.object({
   schemaVersion: z.literal("0.1.0"), id: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,79}$/),
   name: z.string().trim().min(1).max(80),
   shell: z.object({variant: z.literal("contextual"), version: z.literal("0.1.0"), workspaceName: z.string().min(1).max(40)}).strict(),
   root: z.array(nodeSchema).length(2),
+  listDetail: listDetailSchema.optional(),
   dependencies: z.object({pageSchema: z.literal(versions.pageSchema), componentRegistry: z.literal(versions.componentRegistry), designTokens: z.literal(versions.designTokens), codeGenerator: z.literal(versions.codeGenerator)}).strict(),
 }).strict();
 export type PageDocument = z.infer<typeof pageSchema>;

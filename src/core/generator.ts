@@ -26,6 +26,6 @@ export async function generateReact(document:PageDocument):Promise<string>{
     }).join("\n");
     return children?`<${name} ${attributes}>${children}</${name}>`:`<${name} ${attributes}/>`;
   }
-  const source=`"use client";\n${[...imports].sort(([a],[b])=>a<b?-1:1).map(([path,names])=>`import { ${[...names].sort().join(", ")} } from ${JSON.stringify(path)};`).join("\n")}\nexport default function Page(){return <RuntimeProvider><ContextualShell workspaceName={${JSON.stringify(document.shell.workspaceName)}}>${document.root.map(emit).join("\n")}</ContextualShell></RuntimeProvider>}`;
+  const source=`"use client";\n${[...imports].sort(([a],[b])=>a<b?-1:1).map(([path,names])=>`import { ${[...names].sort().join(", ")} } from ${JSON.stringify(path)};`).join("\n")}\nexport default function Page(){return <RuntimeProvider${document.listDetail?` listDetail={${stableStringify(document.listDetail)}} pageTitle={${JSON.stringify(document.name)}}`:""}><ContextualShell workspaceName={${JSON.stringify(document.shell.workspaceName)}}>${document.root.map(emit).join("\n")}</ContextualShell></RuntimeProvider>}`;
   return format(source,{parser:"typescript",semi:true,singleQuote:false,trailingComma:"all"});
 }

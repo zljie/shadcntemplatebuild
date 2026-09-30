@@ -41,7 +41,27 @@ export function validateDocument(input: unknown): Issue[] {
       for(const child of children){if(!slot.accepts.includes(child.componentRef))errors.push({path:`${path}.${key}`,message:`${slot.label} 不接受 ${registry[child.componentRef]?.name??child.componentRef}`});inspect(child,node,depth+1);}
     }
   }
-  document.root.forEach(n=>inspect(n));if(nodes>500)errors.push({path:"root",message:"最多支持 500 个节点"});return errors;
+  document.root.forEach(n=>inspect(n));
+  if(document.listDetail){
+    const config=document.listDetail;
+    const keys=new Set(config.fields.map(f=>f.key));
+    if(keys.size!==config.fields.length)errors.push({path:"listDetail.fields",message:"字段 key 重复"});
+    if(!config.columns.some(column=>column.field===config.titleField))errors.push({path:"listDetail.columns",message:"列必须包含 titleField 以便打开详情"});
+    const references=[{key:config.titleField,path:"listDetail.titleField"},...(config.descriptionField?[{key:config.descriptionField,path:"listDetail.descriptionField"}]:[]),...config.columns.map((c,i)=>({key:c.field,path:`listDetail.columns.${i}.field`})),...Object.entries({searchFields:config.searchFields,filters:config.filters,detailFields:config.detailFields}).flatMap(([name,values])=>values.map((key,i)=>({key,path:`listDetail.${name}.${i}`})))];
+    for(const {key,path} of references)if(!keys.has(key))errors.push({path,message:`引用不存在的字段 ${key}`});
+    for(const [name,values] of Object.entries({columns:config.columns.map(c=>c.field),searchFields:config.searchFields,filters:config.filters,detailFields:config.detailFields}))if(new Set(values).size!==values.length)errors.push({path:`listDetail.${name}`,message:"字段引用重复"});
+    const rowIds=new Set<string>();
+    config.rows.forEach((row,index)=>{
+      const path=`listDetail.rows.${index}`;
+      if(typeof row.id!=="string"||!row.id||rowIds.has(row.id))errors.push({path:`${path}.id`,message:"记录 id 必须是唯一非空字符串"});
+      rowIds.add(String(row.id));
+      for(const key of Object.keys(row))if(key!=="id"&&!keys.has(key))errors.push({path:`${path}.${key}`,message:"未声明字段"});
+      for(const field of config.fields){const expected=field.type==="text"?"string":field.type;if(typeof row[field.key]!==expected)errors.push({path:`${path}.${field.key}`,message:`字段必须是 ${expected}`});}
+    });
+    for(const ref of ["pattern.page-header","composite.search-bar","composite.data-table","composite.resource-details"]){let count=0;walk(document.root,node=>{if(node.componentRef===ref)count++;});if(count!==1)errors.push({path:"root",message:`列表／详情模板必须且只能有一个 ${ref}`});}
+    walk(document.root,node=>{if(node.componentRef==="composite.data-table"&&!node.actions.some(action=>action.capabilityRef==="context.open"))errors.push({path:`node.${node.id}.actions`,message:"列表／详情模板需要 row.select → context.open"});});
+  }
+  if(nodes>500)errors.push({path:"root",message:"最多支持 500 个节点"});return errors;
 }
 export type Target = {parentId:string;slot:string;index:number};
 export function validateDrop(document:PageDocument, source:PageNode, target:Target, moving=false): string | null {

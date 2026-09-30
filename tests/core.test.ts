@@ -108,3 +108,12 @@ describe("Component sources and shared theme",()=>{
     expect(presentation({tokens:{surface:"red"},layout:{padding:"99px"}}).style).toEqual({});
   });
 });
+
+it("preserves configurable fields, false and zero through filtering, command history and export", async()=>{
+  const {resourceListDetail,filterRows,displayValue}=await import("../src/runtime/data");
+  const config={...structuredClone(resourceListDetail),entityName:"用户",fields:[{key:"name",label:"姓名",type:"text" as const},{key:"stock",label:"库存",type:"number" as const},{key:"enabled",label:"启用状态",type:"boolean" as const,trueLabel:"启用",falseLabel:"停用"}],titleField:"name",descriptionField:undefined,columns:[{field:"name",title:"姓名"},{field:"stock",title:"库存"},{field:"enabled",title:"启用状态"}],searchFields:["name"],filters:["enabled"],detailFields:["stock","enabled"],rows:[{id:"one",name:"测试用户",stock:0,enabled:false}]};
+  const doc={...createDocument(),listDetail:config};
+  expect(validateDocument(doc)).toEqual([]);expect(filterRows(config,"测试",{enabled:"false"})).toHaveLength(1);expect(filterRows(config,"测试",{enabled:"true"})).toHaveLength(0);expect(filterRows({...config,filters:["name"],rows:[{id:"empty",name:"",stock:0,enabled:false},...config.rows]},"",{name:""})).toHaveLength(1);expect(displayValue(config,"stock",0)).toBe("0");expect(displayValue(config,"enabled",false)).toBe("停用");
+  inverseCheck(doc,{type:"node.update",nodeId:"page-header",value:{props:{title:"用户管理",description:"示例"}}});
+  const files=await exportProject(doc);expect(JSON.parse(files["page.dsl.json"])).toEqual(JSON.parse(JSON.stringify(doc)));expect(files["src/app/page.tsx"]).toContain("listDetail=");expect(renderToStaticMarkup(createElement(PageRenderer,{document:doc}))).toContain("停用");
+});

@@ -15,10 +15,12 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "export:example": "tsx scripts/export-example.ts"
+    "export:example": "tsx scripts/export-example.ts",
+    "mcp": "tsx src/mcp/server.mts"
   },
   "dependencies": {
     "@dnd-kit/react": "0.5.0",
+    "@modelcontextprotocol/server": "2.2.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "fflate": "0.8.3",
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@modelcontextprotocol/client": "2.2.0",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "26.6.2",

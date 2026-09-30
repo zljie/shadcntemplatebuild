@@ -16,5 +16,5 @@ export function PageRenderer({document,frame,slot,editing=false}:{document:PageD
     const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra}>{children}</Component>;
     return frame?frame(node,element):element;
   }
-  return <components.RuntimeProvider><components.ContextualShell workspaceName={document.shell.workspaceName}>{document.root.map(render)}</components.ContextualShell></components.RuntimeProvider>;
+  return <components.RuntimeProvider key={JSON.stringify(document.listDetail)} listDetail={document.listDetail} pageTitle={document.name}><components.ContextualShell workspaceName={document.shell.workspaceName}>{document.root.map(render)}</components.ContextualShell></components.RuntimeProvider>;
 }

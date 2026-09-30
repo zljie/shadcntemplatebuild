@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { spacing, type PageNode } from "./schema";
-import { tokenOptions } from "@/runtime/tokens";
+import { tokenOptions } from "../runtime/tokens";
 
 export type Field = {key: string; label: string; type: "text" | "textarea" | "select"; options?: string[]};
 export type ComponentSource = {
@@ -36,9 +36,12 @@ export const componentSources: Record<string, ComponentSource> = {
   tokenValues: {...projectSource("tokenValues", "utility", "受控 DSL Token 到共享 CSS variables 的唯一映射", [], [], "src/runtime/tokens.ts"), files: ["src/runtime/tokens.ts", "src/runtime/theme.css", "src/runtime/styles.css"]},
   presentation: projectSource("presentation", "adapter", "受控布局、响应式与 Token 转换为节点样式", ["tokenValues"], [], "src/runtime/presentation.ts"),
   resources: projectSource("resources", "runtime", "本地示例资源数据，不接真实 API", [], [], "src/runtime/data.ts"),
+  resourceListDetail: projectSource("resourceListDetail", "runtime", "旧 DSL 的默认列表／详情配置", ["resources"], [], "src/runtime/data.ts"),
+  displayValue: projectSource("displayValue", "utility", "按字段类型显示 primitive 值，保留 0 与 false", [], [], "src/runtime/data.ts"),
+  filterRows: projectSource("filterRows", "runtime", "按同一配置执行本地搜索与 AND 筛选；最多 200 条示例记录", ["displayValue"], [], "src/runtime/data.ts"),
   useRuntime: projectSource("useRuntime", "runtime", "读取 Runtime 状态与动作", ["RuntimeProvider"]),
-  RuntimeProvider: projectSource("RuntimeProvider", "runtime", "持有搜索、筛选、选择和提示状态", []),
-  ContextualShell: projectSource("ContextualShell", "layout", "锁定 Shell、导航与提示区域；折叠状态及提示动作由 Runtime 承担", ["useRuntime", "resources"], ["react", "lucide-react"]),
+  RuntimeProvider: projectSource("RuntimeProvider", "runtime", "持有共享列表／详情配置、搜索、筛选、选择和提示状态", ["resourceListDetail"]),
+  ContextualShell: projectSource("ContextualShell", "layout", "锁定 Shell、导航与提示区域；折叠状态及提示动作由 Runtime 承担", ["useRuntime"], ["react", "lucide-react"]),
   StackSlot: projectSource("StackSlot", "layout", "独立槽位与 fill/auto 布局", []),
   ResourceIcon: projectSource("ResourceIcon", "composition", "按资源类型选择 Lucide 图标", [], ["react", "lucide-react"]),
   WorkspacePane: projectSource("WorkspacePane", "layout", "锁定的主内容区域", []),
@@ -46,12 +49,12 @@ export const componentSources: Record<string, ComponentSource> = {
   CardBlock: projectSource("CardBlock", "adapter", "DSL 标题、内容槽位和布局适配，底层 Card 来自 shadcn", ["presentation", "Card", "CardContent", "CardHeader", "CardTitle"]),
   ButtonBlock: projectSource("ButtonBlock", "adapter", "DSL 文案与 variant 适配、示例提示动作，底层 Button 来自 shadcn", ["presentation", "Button", "useRuntime"], ["react", "lucide-react"]),
   InputBlock: projectSource("InputBlock", "adapter", "DSL 标签、占位文案与可访问 ID 适配，底层 Input 来自 shadcn", ["presentation", "Input"]),
-  PageHeader: projectSource("PageHeader", "composition", "组合资源标题、说明与示例数据统计", ["presentation", "resources"], ["react", "lucide-react"]),
-  SearchBar: projectSource("SearchBar", "composition", "组合 shadcn Input、原生 select 与 Runtime 搜索筛选", ["presentation", "Input", "useRuntime"], ["react", "lucide-react"]),
-  DataTable: projectSource("DataTable", "composition", "项目原生 table、资源过滤与选行动作；不是 shadcn 通用 DataTable", ["presentation", "resources", "ResourceIcon", "useRuntime"], ["react", "lucide-react"]),
+  PageHeader: projectSource("PageHeader", "composition", "组合页面标题、说明与配置数据统计；兼容原资源指标", ["presentation", "resources", "useRuntime"], ["react", "lucide-react"]),
+  SearchBar: projectSource("SearchBar", "composition", "组合 shadcn Input、原生 select 与 Runtime 搜索筛选", ["presentation", "Input", "useRuntime", "displayValue"], ["react", "lucide-react"]),
+  DataTable: projectSource("DataTable", "composition", "项目原生 table、配置字段、搜索筛选与选行动作；不是 shadcn 通用 DataTable", ["presentation", "filterRows", "displayValue", "ResourceIcon", "useRuntime"], ["react", "lucide-react"]),
   EmptyState: projectSource("EmptyState", "composition", "项目空白引导组合", ["presentation"], ["react", "lucide-react"]),
   ContextPanel: projectSource("ContextPanel", "layout", "锁定详情区域；适配窄屏 shadcn Dialog 和关闭动作", ["useRuntime", "Dialog", "DialogContent", "DialogTitle", "DialogDescription"], ["react", "lucide-react"]),
-  ResourceDetails: projectSource("ResourceDetails", "composition", "组合所选示例资源信息与详情说明", ["presentation", "ResourceIcon", "useRuntime"], ["react", "lucide-react"]),
+  ResourceDetails: projectSource("ResourceDetails", "composition", "按共享配置组合所选示例记录字段与详情说明", ["presentation", "ResourceIcon", "useRuntime", "displayValue"], ["react", "lucide-react"]),
 };
 export type Definition = ComponentSource & {
   name: string; description: string; category: "布局" | "基础" | "业务";
@@ -72,11 +75,11 @@ export const registry: Record<string, Definition> = {
   "shadcn.button": definition({name:"Button",description:"标准操作按钮",category:"基础",exportName:"ButtonBlock",schema:z.object({text:text.min(1),variant:z.enum(["default","outline","secondary"]),message:text.min(1)}).strict(),fields:[field("text","按钮文案"),field("variant","按钮样式","select",["default","outline","secondary"]),field("message","点击提示")],defaults:{text:"了解更多",variant:"outline",message:"这是可配置的示例操作。"},slots:{},parents}),
   "shadcn.input": definition({name:"Input",description:"带标签的文本输入",category:"基础",exportName:"InputBlock",schema:z.object({label:text.min(1),placeholder:text}).strict(),fields:[field("label","字段标签"),field("placeholder","占位文案")],defaults:{label:"资源名称",placeholder:"输入资源名称"},slots:{},parents}),
   "pattern.page-header": definition({name:"PageHeader",description:"页面标题与说明",category:"业务",exportName:"PageHeader",schema:z.object({title:text.min(1),description:longText}).strict(),fields:[field("title","页面标题"),field("description","页面说明","textarea")],defaults:{title:"资源中心",description:"集中管理工作空间中的技能、工具和知识。"},slots:{},parents:["region.workspace","layout.stack"]}),
-  "composite.search-bar": definition({name:"SearchBar",description:"搜索与资源类型筛选",category:"业务",exportName:"SearchBar",schema:z.object({placeholder:text}).strict(),fields:[field("placeholder","搜索提示")],defaults:{placeholder:"搜索资源名称或描述…"},slots:{},parents}),
-  "composite.data-table": definition({name:"DataTable",description:"可搜索的资源列表",category:"业务",exportName:"DataTable",schema:z.object({density:z.enum(["comfortable","compact"])}).strict(),fields:[field("density","行间距","select",["comfortable","compact"])],defaults:{density:"comfortable"},slots:{},parents}),
+  "composite.search-bar": definition({name:"SearchBar",description:"按页面配置搜索与筛选",category:"业务",exportName:"SearchBar",schema:z.object({placeholder:text}).strict(),fields:[field("placeholder","搜索提示")],defaults:{placeholder:"搜索资源名称或描述…"},slots:{},parents}),
+  "composite.data-table": definition({name:"DataTable",description:"可配置的业务列表",category:"业务",exportName:"DataTable",schema:z.object({density:z.enum(["comfortable","compact"])}).strict(),fields:[field("density","行间距","select",["comfortable","compact"])],defaults:{density:"comfortable"},slots:{},parents}),
   "composite.empty-state": definition({name:"EmptyState",description:"空白页面的清晰引导",category:"业务",exportName:"EmptyState",schema:z.object({title:text.min(1),description:longText}).strict(),fields:[field("title","标题"),field("description","说明","textarea")],defaults:{title:"这里还没有内容",description:"添加组件，开始构建你的页面。"},slots:{},parents}),
-  "composite.context-panel": definition({name:"ContextPanel",description:"锁定的资源详情区域",category:"布局",exportName:"ContextPanel",schema:z.object({title:text.min(1)}).strict(),fields:[field("title","面板标题")],defaults:{title:"资源详情"},slots:{children:{label:"详情内容",accepts:["composite.resource-details"],max:1}},parents:[],internal:true}),
-  "composite.resource-details": definition({name:"ResourceDetails",description:"所选资源的详细信息",category:"业务",exportName:"ResourceDetails",schema:z.object({}).strict(),fields:[],defaults:{},slots:{},parents:["composite.context-panel"]}),
+  "composite.context-panel": definition({name:"ContextPanel",description:"锁定的详情区域",category:"布局",exportName:"ContextPanel",schema:z.object({title:text.min(1)}).strict(),fields:[field("title","面板标题")],defaults:{title:"资源详情"},slots:{children:{label:"详情内容",accepts:["composite.resource-details"],max:1}},parents:[],internal:true}),
+  "composite.resource-details": definition({name:"ResourceDetails",description:"按页面配置展示所选记录详情（保留旧引用）",category:"业务",exportName:"ResourceDetails",schema:z.object({}).strict(),fields:[],defaults:{},slots:{},parents:["composite.context-panel"]}),
 };
 export const layoutFields: Field[] = [field("direction","排列方向","select",["column","row"]),field("gap","组件间距","select",[...spacing]),field("padding","内边距","select",[...spacing]),field("width","宽度","select",["width.full","width.auto"]),field("align","对齐方式","select",["start","center","stretch"])];
 export const tokenFields: Field[] = [field("surface","背景","select",[...tokenOptions.surface]),field("radius","圆角","select",[...tokenOptions.radius])];
