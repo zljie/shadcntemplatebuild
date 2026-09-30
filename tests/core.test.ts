@@ -4,7 +4,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { createDocument } from "../src/core/document";
 import { execute, type Command, type Result } from "../src/core/commands";
-import { makeNode } from "../src/core/registry";
+import { makeNode, registry, componentSources, tokenFields } from "../src/core/registry";
+import { readFile } from "node:fs/promises";
+import { presentation } from "../src/runtime/presentation";
+import { spacing, tokenOptions, tokenValues, themeVersion } from "../src/runtime/tokens";
+import { layoutSchema, tokenSchema, versions } from "../src/core/schema";
 import { validateDocument, locate } from "../src/core/validation";
 import { generateReact } from "../src/core/generator";
 import { exportProject } from "../src/core/export-project";
@@ -53,5 +57,54 @@ describe("Stack slots",()=>{
     for(const key of ["slot-6","arbitrary"])expect(run(doc,{type:"node.update",nodeId:"stack",value:{slots:{...stack.slots,[key]:[]}}}).success).toBe(false);
     for(const slotWidths of [{"slot-5":"auto"},{children:"100px"}])expect(run(doc,{type:"node.update",nodeId:"stack",value:{props:{slotWidths}}}).success).toBe(false);
     expect(run(doc,{type:"node.update",nodeId:"workspace",value:{slots:{children:[]}}}).success).toBe(false);
+  });
+});
+
+
+describe("Component sources and shared theme",()=>{
+  it("records every implementation, real symbol, source file and dependency without claiming an upstream version",async()=>{
+    const files=await exportProject(createDocument());
+    const pkg=JSON.parse(files["package.json"]);
+    expect(Object.keys(registry)).toHaveLength(11);
+    for(const definition of Object.values(registry)){
+      expect(definition.source.name).toBe("project");
+      expect(definition).toMatchObject(componentSources[definition.exportName]);
+      expect(definition.schema.safeParse(definition.defaults).success).toBe(true);
+    }
+    for(const [symbol,source] of Object.entries(componentSources)){
+      expect(source.exportName).toBe(symbol);
+      const sourceModule=await import("../"+source.files[0]);
+      expect(sourceModule[symbol]).toBeDefined();
+      expect(source.importPath).toBe("@/"+source.files[0].slice(4).replace(/\.tsx?$/, ""));
+      expect(source.responsibility.length).toBeGreaterThan(0);
+      expect(source.source.evidence.length).toBeGreaterThan(0);
+      for(const file of source.files)expect(files[file]).toBe(await readFile(file,"utf8"));
+      for(const dependency of source.componentDependencies)expect(componentSources[dependency]).toBeDefined();
+      for(const dependency of source.npmDependencies)expect(pkg.dependencies[dependency]).toBeDefined();
+      if(source.source.name==="shadcn")expect(source.source.upstreamVersion).toBeNull();
+    }
+    expect(registry["shadcn.button"].componentDependencies).toContain("Button");
+    expect(registry["composite.data-table"].source.name).toBe("project");
+  });
+  it("shares DSL options, CSS variables, presentation mapping and exported theme sources",async()=>{
+    const files=await exportProject(createDocument());
+    expect(versions.designTokens).toBe(themeVersion);
+    expect(tokenFields.map(field=>field.options)).toEqual([tokenOptions.surface,tokenOptions.radius]);
+    for(const value of spacing){
+      expect(layoutSchema.safeParse({gap:value}).success).toBe(true);
+      expect(presentation({layout:{gap:value},responsive:{mobile:{padding:value}}}).style).toMatchObject({"--node-gap":tokenValues[value],"--m-node-padding":tokenValues[value]});
+    }
+    for(const [key,values] of Object.entries(tokenOptions))for(const value of values){
+      expect(tokenSchema.safeParse({[key]:value}).success).toBe(true);
+      expect(presentation({tokens:{[key]:value}}).style).toMatchObject({["--node-"+key]:tokenValues[value]});
+    }
+    for(const value of Object.values(tokenValues))expect(files["src/runtime/theme.css"]).toContain(value.slice(4,-1)+":");
+    for(const file of ["src/runtime/tokens.ts","src/runtime/theme.css","src/runtime/styles.css","src/runtime/components.tsx","src/runtime/presentation.ts"])
+      expect(files[file]).toBe(await readFile(file,"utf8"));
+    expect(files["src/app/globals.css"]).toContain('@import "../runtime/styles.css"');
+    expect(files["src/runtime/styles.css"]).toContain('@import "./theme.css"');
+    expect(files["src/runtime/theme.css"]).toContain(".page-surface, .runtime-detail-dialog");
+    expect(files["src/app/globals.css"]).not.toContain("builder");
+    expect(presentation({tokens:{surface:"red"},layout:{padding:"99px"}}).style).toEqual({});
   });
 });

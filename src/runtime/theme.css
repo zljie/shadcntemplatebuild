@@ -1,0 +1,21 @@
+/* Provisional design tokens. Replace only after the approved enterprise token file arrives. */
+:root, .page-surface, .runtime-detail-dialog {
+  --surface:var(--background); --surface-muted:#f6f7f8; --ink:var(--foreground); --ink-muted:var(--muted-foreground);
+  --line:var(--border); --green:var(--primary); --green-light:#eaf4ef;
+  --runtime-font-family:Inter,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;
+  --page-font-size:12px;
+  --space-0:0px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+  /* DSL radii and shadcn radii retain their existing, distinct values. */
+  --dsl-radius-sm:4px; --dsl-radius-md:8px; --dsl-radius-lg:12px;
+  --ui-radius-sm:4px; --ui-radius-md:6px; --ui-radius-lg:8px; --ui-radius-xl:12px;
+  --background:#fff; --foreground:#252a32; --card:var(--background); --card-foreground:var(--foreground);
+  --popover:var(--background); --popover-foreground:var(--foreground); --primary:#187457; --primary-foreground:var(--background);
+  --secondary:#f1f3f5; --secondary-foreground:#343a44; --muted:#f5f6f7; --muted-foreground:#69717d;
+  --accent:#edf3ef; --accent-foreground:#185e48; --destructive:#b42318; --border:#e5e7eb; --input:#dfe3e8; --ring:#187457; --radius:0.5rem;
+}
+@theme inline {
+  --color-background:var(--background);--color-foreground:var(--foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-popover:var(--popover);--color-popover-foreground:var(--popover-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-destructive:var(--destructive);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--radius-sm:var(--ui-radius-sm);--radius-md:var(--ui-radius-md);--radius-lg:var(--ui-radius-lg);--radius-xl:var(--ui-radius-xl);
+}
+
+/* Preserve Studio preview typography without inheriting the editor font size. */
+.page-surface{font-family:var(--runtime-font-family);font-size:var(--page-font-size);line-height:1.5}

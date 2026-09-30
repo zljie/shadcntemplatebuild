@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { spacing, tokenOptions, themeVersion } from "@/runtime/tokens";
+export { spacing } from "@/runtime/tokens";
 
-export const versions = { pageSchema: "0.1.0", componentRegistry: "0.1.0", designTokens: "provisional-0.1.0", codeGenerator: "0.1.0" } as const;
-export const spacing = ["space.0", "space.2", "space.3", "space.4", "space.6", "space.8"] as const;
+export const versions = { pageSchema: "0.1.0", componentRegistry: "0.1.0", designTokens: themeVersion, codeGenerator: "0.1.0" } as const;
 export const layoutSchema = z.object({
   direction: z.enum(["column", "row"]).optional(),
   gap: z.enum(spacing).optional(),
@@ -11,8 +12,8 @@ export const layoutSchema = z.object({
   hidden: z.boolean().optional(),
 }).strict();
 export const tokenSchema = z.object({
-  surface: z.enum(["color.surface", "color.muted"]).optional(),
-  radius: z.enum(["radius.sm", "radius.md", "radius.lg"]).optional(),
+  surface: z.enum(tokenOptions.surface).optional(),
+  radius: z.enum(tokenOptions.radius).optional(),
 }).strict();
 export type Layout = z.infer<typeof layoutSchema>;
 export type Tokens = z.infer<typeof tokenSchema>;

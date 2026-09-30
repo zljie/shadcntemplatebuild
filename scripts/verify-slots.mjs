@@ -55,6 +55,19 @@ try{
   assert.equal(await page.locator('tbody tr').count(),1);
   await runtime.getByRole('button',{name:'了解更多',exact:true}).click();
   await page.getByText('这是可配置的示例操作。',{exact:true}).waitFor();
+  await runtime.getByRole('button',{name:'清除搜索',exact:true}).click();
+  await runtime.getByRole('combobox',{name:'资源类型',exact:true}).selectOption('MCP');
+  assert.equal(await page.locator('tbody tr').count(),2);
+  await runtime.getByPlaceholder('搜索资源名称或描述…').fill('no-matching-resource');
+  await page.getByText('没有找到匹配资源',{exact:true}).waitFor();
+  assert.equal(await page.locator('tbody tr').count(),0);
+  await runtime.getByRole('button',{name:'清除搜索',exact:true}).click();
+  await runtime.getByRole('combobox',{name:'资源类型',exact:true}).selectOption('all');
+  await page.getByRole('button',{name:'GitHub Connector',exact:true}).click();
+  await page.locator('.resource-details h2').getByText('GitHub Connector',{exact:true}).waitFor();
+  assert.equal(await page.locator('tbody tr[data-selected="true"]').count(),1);
+  await page.getByRole('button',{name:'关闭详情',exact:true}).click();
+  assert.equal(await page.locator('tbody tr[data-selected="true"]').count(),0);
   await page.getByRole('button',{name:'手机',exact:true}).click();
   a=await runtime.locator('[data-slot="children"]').boundingBox();b=await runtime.locator('[data-slot="slot-1"]').boundingBox();
   assert(a&&b&&b.y>=a.y+a.height-1,'Mobile slots must stack vertically');
@@ -87,5 +100,5 @@ try{
   const response=await page.request.post(new URL('/api/export',page.url()).href,{data:{document:original,format:'code'}});
   assert(response.ok());const generated=await response.json();assert(generated.code.includes('StackSlot'));
   assert.deepEqual(errors,[]);
-  console.log('PASS: palette and cross-slot drag, slot creation/removal/undo, horizontal layout, mobile layout, search/button actions, IndexedDB restore, DSL download/import, generated code');
+  console.log('PASS: palette and cross-slot drag, slot creation/removal/undo, horizontal layout, mobile layout, search/type filter/empty result/selection/detail close/button actions, IndexedDB restore, DSL download/import, generated code');
 }catch(error){await page.screenshot({path:'/tmp/composer-slots-failure.png',fullPage:true});console.error(await page.locator('body').innerText());throw error;}finally{await browser.close();}

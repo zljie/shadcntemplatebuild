@@ -1,10 +1,60 @@
 import { z } from "zod";
 import { spacing, type PageNode } from "./schema";
+import { tokenOptions } from "@/runtime/tokens";
 
 export type Field = {key: string; label: string; type: "text" | "textarea" | "select"; options?: string[]};
-export type Definition = {
+export type ComponentSource = {
+  role: "ui" | "layout" | "composition" | "adapter" | "runtime" | "utility";
+  source: { name: "project" | "shadcn"; evidence: string[]; upstreamVersion?: null };
+  exportName: string; importPath: string; files: string[];
+  componentDependencies: string[]; npmDependencies: string[]; responsibility: string;
+};
+const projectSource = (exportName: string, role: ComponentSource["role"], responsibility: string, componentDependencies: string[], npmDependencies: string[] = ["react"], file = "src/runtime/components.tsx"): ComponentSource => ({
+  role, source: {name: "project", evidence: [file]}, exportName,
+  importPath: "@/" + file.slice(4).replace(/\.(tsx?|css)$/, ""), files: [file],
+  componentDependencies, npmDependencies, responsibility,
+});
+const uiSource = (exportName: string, name: string, componentDependencies: string[], npmDependencies: string[]): ComponentSource => ({
+  role: "ui", source: {name: "shadcn", upstreamVersion: null, evidence: ["components.json", `src/components/ui/${name}.tsx`, "git:a17c443"]},
+  exportName, importPath: `@/components/ui/${name}`, files: [`src/components/ui/${name}.tsx`],
+  componentDependencies, npmDependencies, responsibility: "已有 shadcn 基础 UI 源码；准确上游版本及本地修改差异待核实",
+});
+// Direct source/dependency records, not a resolver. The shared runtime module is exported in full.
+// Keys identify actual exported symbols; DSL entries retain their existing componentRef.
+export const componentSources: Record<string, ComponentSource> = {
+  Button: uiSource("Button", "button", ["cn"], ["react", "radix-ui", "class-variance-authority"]),
+  Input: uiSource("Input", "input", ["cn"], ["react"]),
+  Card: uiSource("Card", "card", ["cn"], ["react"]),
+  CardContent: uiSource("CardContent", "card", ["cn"], ["react"]),
+  CardHeader: uiSource("CardHeader", "card", ["cn"], ["react"]),
+  CardTitle: uiSource("CardTitle", "card", ["cn"], ["react"]),
+  Dialog: uiSource("Dialog", "dialog", ["cn", "Button"], ["react", "radix-ui", "lucide-react"]),
+  DialogContent: uiSource("DialogContent", "dialog", ["Dialog", "Button", "cn"], ["react", "radix-ui", "lucide-react"]),
+  DialogTitle: uiSource("DialogTitle", "dialog", ["Dialog"], ["react", "radix-ui"]),
+  DialogDescription: uiSource("DialogDescription", "dialog", ["Dialog"], ["react", "radix-ui"]),
+  cn: projectSource("cn", "utility", "组合 className 与 Tailwind 类", [], ["clsx", "tailwind-merge"], "src/core/utils.ts"),
+  tokenValues: {...projectSource("tokenValues", "utility", "受控 DSL Token 到共享 CSS variables 的唯一映射", [], [], "src/runtime/tokens.ts"), files: ["src/runtime/tokens.ts", "src/runtime/theme.css", "src/runtime/styles.css"]},
+  presentation: projectSource("presentation", "adapter", "受控布局、响应式与 Token 转换为节点样式", ["tokenValues"], [], "src/runtime/presentation.ts"),
+  resources: projectSource("resources", "runtime", "本地示例资源数据，不接真实 API", [], [], "src/runtime/data.ts"),
+  useRuntime: projectSource("useRuntime", "runtime", "读取 Runtime 状态与动作", ["RuntimeProvider"]),
+  RuntimeProvider: projectSource("RuntimeProvider", "runtime", "持有搜索、筛选、选择和提示状态", []),
+  ContextualShell: projectSource("ContextualShell", "layout", "锁定 Shell、导航与提示区域；折叠状态及提示动作由 Runtime 承担", ["useRuntime", "resources"], ["react", "lucide-react"]),
+  StackSlot: projectSource("StackSlot", "layout", "独立槽位与 fill/auto 布局", []),
+  ResourceIcon: projectSource("ResourceIcon", "composition", "按资源类型选择 Lucide 图标", [], ["react", "lucide-react"]),
+  WorkspacePane: projectSource("WorkspacePane", "layout", "锁定的主内容区域", []),
+  Stack: projectSource("Stack", "layout", "排列 DSL 子节点；不实现基础 UI", ["presentation", "StackSlot"]),
+  CardBlock: projectSource("CardBlock", "adapter", "DSL 标题、内容槽位和布局适配，底层 Card 来自 shadcn", ["presentation", "Card", "CardContent", "CardHeader", "CardTitle"]),
+  ButtonBlock: projectSource("ButtonBlock", "adapter", "DSL 文案与 variant 适配、示例提示动作，底层 Button 来自 shadcn", ["presentation", "Button", "useRuntime"], ["react", "lucide-react"]),
+  InputBlock: projectSource("InputBlock", "adapter", "DSL 标签、占位文案与可访问 ID 适配，底层 Input 来自 shadcn", ["presentation", "Input"]),
+  PageHeader: projectSource("PageHeader", "composition", "组合资源标题、说明与示例数据统计", ["presentation", "resources"], ["react", "lucide-react"]),
+  SearchBar: projectSource("SearchBar", "composition", "组合 shadcn Input、原生 select 与 Runtime 搜索筛选", ["presentation", "Input", "useRuntime"], ["react", "lucide-react"]),
+  DataTable: projectSource("DataTable", "composition", "项目原生 table、资源过滤与选行动作；不是 shadcn 通用 DataTable", ["presentation", "resources", "ResourceIcon", "useRuntime"], ["react", "lucide-react"]),
+  EmptyState: projectSource("EmptyState", "composition", "项目空白引导组合", ["presentation"], ["react", "lucide-react"]),
+  ContextPanel: projectSource("ContextPanel", "layout", "锁定详情区域；适配窄屏 shadcn Dialog 和关闭动作", ["useRuntime", "Dialog", "DialogContent", "DialogTitle", "DialogDescription"], ["react", "lucide-react"]),
+  ResourceDetails: projectSource("ResourceDetails", "composition", "组合所选示例资源信息与详情说明", ["presentation", "ResourceIcon", "useRuntime"], ["react", "lucide-react"]),
+};
+export type Definition = ComponentSource & {
   name: string; description: string; category: "布局" | "基础" | "业务";
-  exportName: string; importPath: "@/runtime/components";
   schema: z.ZodType; fields: Field[]; defaults: Record<string, unknown>;
   slots: Record<string, {label: string; accepts: string[]; max: number}>;
   parents: string[]; internal?: boolean;
@@ -12,7 +62,7 @@ export type Definition = {
 const text = z.string().max(200);
 const longText = z.string().max(1000);
 const field = (key: string, label: string, type: Field["type"] = "text", options?: string[]): Field => ({key,label,type,options});
-const definition = (value: Omit<Definition, "importPath">): Definition => ({...value, importPath: "@/runtime/components"});
+const definition = (value: Omit<Definition, keyof ComponentSource> & {exportName: string}): Definition => ({...componentSources[value.exportName], ...value});
 const content = ["layout.stack", "shadcn.card", "shadcn.button", "shadcn.input", "pattern.page-header", "composite.search-bar", "composite.data-table", "composite.empty-state"];
 const parents = ["region.workspace", "layout.stack", "shadcn.card"];
 export const registry: Record<string, Definition> = {
@@ -29,7 +79,7 @@ export const registry: Record<string, Definition> = {
   "composite.resource-details": definition({name:"ResourceDetails",description:"所选资源的详细信息",category:"业务",exportName:"ResourceDetails",schema:z.object({}).strict(),fields:[],defaults:{},slots:{},parents:["composite.context-panel"]}),
 };
 export const layoutFields: Field[] = [field("direction","排列方向","select",["column","row"]),field("gap","组件间距","select",[...spacing]),field("padding","内边距","select",[...spacing]),field("width","宽度","select",["width.full","width.auto"]),field("align","对齐方式","select",["start","center","stretch"])];
-export const tokenFields: Field[] = [field("surface","背景","select",["color.surface","color.muted"]),field("radius","圆角","select",["radius.sm","radius.md","radius.lg"])];
+export const tokenFields: Field[] = [field("surface","背景","select",[...tokenOptions.surface]),field("radius","圆角","select",[...tokenOptions.radius])];
 export function makeNode(componentRef: string, id = `n-${crypto.randomUUID()}`): PageNode {
   const d = registry[componentRef];
   if(!d) throw new Error(`未注册组件：${componentRef}`);

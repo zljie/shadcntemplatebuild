@@ -1,16 +1,5 @@
-/* Provisional design tokens. Replace only after the approved enterprise token file arrives. */
-:root {
-  --surface:#ffffff; --surface-muted:#f6f7f8; --ink:#252a32; --ink-muted:#69717d;
-  --line:#e5e7eb; --green:#187457; --green-light:#eaf4ef;
-  --background:#fff; --foreground:#252a32; --card:#fff; --card-foreground:#252a32;
-  --popover:#fff; --popover-foreground:#252a32; --primary:#187457; --primary-foreground:#fff;
-  --secondary:#f1f3f5; --secondary-foreground:#343a44; --muted:#f5f6f7; --muted-foreground:#69717d;
-  --accent:#edf3ef; --accent-foreground:#185e48; --destructive:#b42318; --border:#e5e7eb; --input:#dfe3e8; --ring:#187457; --radius:0.5rem;
-}
-@theme inline {
-  --color-background:var(--background);--color-foreground:var(--foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-popover:var(--popover);--color-popover-foreground:var(--popover-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-destructive:var(--destructive);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--radius-sm:4px;--radius-md:6px;--radius-lg:8px;--radius-xl:12px;
-}
-*{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:Inter,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed}button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:3px}button{touch-action:manipulation}select{color:var(--ink)}
+@import "./theme.css";
+*{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:var(--runtime-font-family);font-size:14px;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed}button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:3px}button{touch-action:manipulation}select{color:var(--ink)}
 .page-surface{container:page / inline-size;width:100%;background:var(--surface);text-align:left;color:var(--ink)}
 .runtime-shell{display:flex;min-height:840px;background:var(--surface)}
 .runtime-sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--line);background:#fbfcfb;display:flex;flex-direction:column;padding:24px 14px 16px;gap:6px}
