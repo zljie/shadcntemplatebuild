@@ -3,7 +3,7 @@ import path from "node:path";
 import { generateReact, stableStringify } from "./generator";
 import type { PageDocument } from "./schema";
 // Export only the runtime closure. No Builder, registry, store, command or drag dependency.
-const files=["src/runtime/components.tsx","src/runtime/presentation.ts","src/runtime/tokens.ts","src/runtime/theme.css","src/runtime/data.ts","src/runtime/styles.css","src/components/ui/button.tsx","src/components/ui/input.tsx","src/components/ui/card.tsx","src/components/ui/dialog.tsx","src/core/utils.ts","postcss.config.mjs",".nvmrc"];
+const files=["src/runtime/components.tsx","src/runtime/presentation.ts","src/runtime/tokens.ts","src/runtime/theme.css","src/runtime/data.ts","src/runtime/records.ts","src/runtime/styles.css","src/components/ui/button.tsx","src/components/ui/input.tsx","src/components/ui/card.tsx","src/components/ui/dialog.tsx","src/core/utils.ts","postcss.config.mjs",".nvmrc"];
 export async function exportProject(document:PageDocument):Promise<Record<string,string>>{
   const root=process.cwd();const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8"));
   const dependencies=Object.fromEntries(["next","react","react-dom","lucide-react","radix-ui","class-variance-authority","clsx","tailwind-merge"].map(name=>[name,pkg.dependencies[name]]));

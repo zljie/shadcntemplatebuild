@@ -16,6 +16,9 @@ it("discovers and calls all tools over real STDIO, including validation failures
     const call=async(name:string,args:Record<string,unknown>={})=>{const result=await client.callTool({name,arguments:args});return result.structuredContent as Record<string,unknown>;};
     expect((await call("list_components")).components).toHaveLength(11);
     const protocol=await call("get_page_protocol");expect(protocol.schema).toBeDefined();expect(protocol.rules).toBeDefined();
+    const formDoc=(protocol.formTemplate as ReturnType<typeof import("../src/core/page-protocol").pageProtocol>["formTemplate"]);
+    expect(await call("validate_page",{document:formDoc})).toEqual({valid:true,errors:[]});
+    for(const mutate of [(d:typeof formDoc)=>{d.listDetail.form.actions[0]="record.delete" as never;},(d:typeof formDoc)=>{d.listDetail.fields[2].min=-1;d.listDetail.fields[2].max=-2;},(d:typeof formDoc)=>{(d.listDetail.form as unknown as Record<string,unknown>).url="https://example.com";}]){const invalid=structuredClone(formDoc);mutate(invalid);expect((await call("validate_page",{document:invalid})).valid).toBe(false);}
     const doc={...createDocument(),listDetail:structuredClone(resourceListDetail)};
     expect(await call("validate_page",{document:doc})).toEqual({valid:true,errors:[]});
     const mutations=[

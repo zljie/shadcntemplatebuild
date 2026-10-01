@@ -1,6 +1,6 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "users-management",
+  "id": "user-management",
   "name": "用户管理",
   "shell": {
     "variant": "contextual",
@@ -19,12 +19,12 @@
       "slots": {
         "children": [
           {
-            "id": "user-page-header",
+            "id": "page-header",
             "componentRef": "pattern.page-header",
             "componentVersion": "0.1.0",
             "props": {
               "title": "用户管理",
-              "description": "查看用户账号、角色与启用状态。"
+              "description": "SIMULATION 示例数据：仅在当前会话内模拟新增与编辑，刷新后恢复；不连接任何真实接口。"
             },
             "layout": {},
             "tokens": {},
@@ -36,7 +36,7 @@
             }
           },
           {
-            "id": "user-search-bar",
+            "id": "search-bar",
             "componentRef": "composite.search-bar",
             "componentVersion": "0.1.0",
             "props": {
@@ -52,7 +52,7 @@
             }
           },
           {
-            "id": "user-table",
+            "id": "resource-table",
             "componentRef": "composite.data-table",
             "componentVersion": "0.1.0",
             "props": {
@@ -92,7 +92,7 @@
       "slots": {
         "children": [
           {
-            "id": "user-details",
+            "id": "resource-details",
             "componentRef": "composite.resource-details",
             "componentVersion": "0.1.0",
             "props": {},
@@ -122,31 +122,71 @@
   "listDetail": {
     "entityName": "用户",
     "dataSource": "example",
+    "titleField": "name",
     "fields": [
       {
         "key": "name",
         "label": "姓名",
-        "type": "text"
+        "type": "text",
+        "default": "",
+        "required": true,
+        "minLength": 1,
+        "maxLength": 80
       },
       {
         "key": "account",
         "label": "账号",
-        "type": "text"
+        "type": "text",
+        "default": "",
+        "required": true,
+        "minLength": 1,
+        "maxLength": 80
       },
       {
         "key": "role",
         "label": "角色",
-        "type": "text"
+        "type": "text",
+        "default": "读者",
+        "required": true,
+        "options": [
+          {
+            "label": "管理员",
+            "value": "管理员"
+          },
+          {
+            "label": "馆员",
+            "value": "馆员"
+          },
+          {
+            "label": "读者",
+            "value": "读者"
+          },
+          {
+            "label": "审计员",
+            "value": "审计员"
+          }
+        ]
       },
       {
         "key": "enabled",
         "label": "启用状态",
         "type": "boolean",
+        "default": true,
+        "required": true,
         "trueLabel": "启用",
-        "falseLabel": "停用"
+        "falseLabel": "停用",
+        "options": [
+          {
+            "label": "启用",
+            "value": true
+          },
+          {
+            "label": "停用",
+            "value": false
+          }
+        ]
       }
     ],
-    "titleField": "name",
     "columns": [
       {
         "field": "name",
@@ -179,34 +219,47 @@
       "role",
       "enabled"
     ],
+    "form": {
+      "fields": [
+        "name",
+        "account",
+        "role",
+        "enabled"
+      ],
+      "uniqueField": "account",
+      "actions": [
+        "record.create",
+        "record.update"
+      ]
+    },
     "rows": [
       {
         "id": "user-01",
-        "name": "陈星野",
-        "account": "chen.xingye",
+        "name": "张伟",
+        "account": "zhangwei",
         "role": "管理员",
         "enabled": true
       },
       {
         "id": "user-02",
-        "name": "苏晚晴",
-        "account": "su.wanqing",
+        "name": "李娜",
+        "account": "lina",
         "role": "馆员",
         "enabled": true
       },
       {
         "id": "user-03",
-        "name": "陆知行",
-        "account": "lu.zhixing",
+        "name": "王强",
+        "account": "wangqiang",
         "role": "读者",
         "enabled": false
       },
       {
         "id": "user-04",
-        "name": "唐映雪",
-        "account": "tang.yingxue",
+        "name": "陈静",
+        "account": "chenjing",
         "role": "审计员",
-        "enabled": false
+        "enabled": true
       }
     ]
   }

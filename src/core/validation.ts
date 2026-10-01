@@ -1,5 +1,6 @@
 import { pageSchema, type PageDocument, type PageNode } from "./schema";
 import { registry, slotDefinition } from "./registry";
+import { validateBusinessConfig } from "../runtime/records";
 export type Issue = {path:string;message:string};
 export function walk(nodes: PageNode[], visit: (node: PageNode, parent?: PageNode, slot?: string) => void, parent?: PageNode, slot?: string) {
   for(const node of nodes) {visit(node,parent,slot);for(const [key,children] of Object.entries(node.slots))walk(children,visit,node,key);}
@@ -44,6 +45,7 @@ export function validateDocument(input: unknown): Issue[] {
   document.root.forEach(n=>inspect(n));
   if(document.listDetail){
     const config=document.listDetail;
+    errors.push(...validateBusinessConfig(config));
     const keys=new Set(config.fields.map(f=>f.key));
     if(keys.size!==config.fields.length)errors.push({path:"listDetail.fields",message:"字段 key 重复"});
     if(!config.columns.some(column=>column.field===config.titleField))errors.push({path:"listDetail.columns",message:"列必须包含 titleField 以便打开详情"});

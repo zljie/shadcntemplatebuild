@@ -1,6 +1,6 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "books-management",
+  "id": "book-management",
   "name": "图书管理",
   "shell": {
     "variant": "contextual",
@@ -19,12 +19,12 @@
       "slots": {
         "children": [
           {
-            "id": "book-page-header",
+            "id": "page-header",
             "componentRef": "pattern.page-header",
             "componentVersion": "0.1.0",
             "props": {
               "title": "图书管理",
-              "description": "查看馆藏图书、库存与借阅状态。"
+              "description": "SIMULATION 示例数据：仅在当前会话内模拟新增与编辑，刷新后恢复；不连接任何真实接口。"
             },
             "layout": {},
             "tokens": {},
@@ -36,7 +36,7 @@
             }
           },
           {
-            "id": "book-search-bar",
+            "id": "search-bar",
             "componentRef": "composite.search-bar",
             "componentVersion": "0.1.0",
             "props": {
@@ -52,7 +52,7 @@
             }
           },
           {
-            "id": "book-table",
+            "id": "resource-table",
             "componentRef": "composite.data-table",
             "componentVersion": "0.1.0",
             "props": {
@@ -92,7 +92,7 @@
       "slots": {
         "children": [
           {
-            "id": "book-details",
+            "id": "resource-details",
             "componentRef": "composite.resource-details",
             "componentVersion": "0.1.0",
             "props": {},
@@ -122,34 +122,83 @@
   "listDetail": {
     "entityName": "图书",
     "dataSource": "example",
+    "titleField": "title",
     "fields": [
       {
         "key": "title",
         "label": "书名",
-        "type": "text"
+        "type": "text",
+        "default": "",
+        "required": true,
+        "minLength": 1,
+        "maxLength": 80
       },
       {
         "key": "author",
         "label": "作者",
-        "type": "text"
+        "type": "text",
+        "default": "",
+        "required": true,
+        "minLength": 1,
+        "maxLength": 80
       },
       {
         "key": "category",
         "label": "分类",
-        "type": "text"
+        "type": "text",
+        "default": "悬疑小说",
+        "required": true,
+        "options": [
+          {
+            "label": "悬疑小说",
+            "value": "悬疑小说"
+          },
+          {
+            "label": "科幻小说",
+            "value": "科幻小说"
+          },
+          {
+            "label": "文学小说",
+            "value": "文学小说"
+          },
+          {
+            "label": "少儿读物",
+            "value": "少儿读物"
+          }
+        ]
       },
       {
         "key": "inventory",
         "label": "库存",
-        "type": "number"
+        "type": "number",
+        "default": 0,
+        "required": true,
+        "min": 0,
+        "max": 100000,
+        "integer": true
       },
       {
         "key": "loanStatus",
         "label": "借阅状态",
-        "type": "text"
+        "type": "text",
+        "default": "可借阅",
+        "required": true,
+        "options": [
+          {
+            "label": "可借阅",
+            "value": "可借阅"
+          },
+          {
+            "label": "借阅中",
+            "value": "借阅中"
+          },
+          {
+            "label": "已借完",
+            "value": "已借完"
+          }
+        ]
       }
     ],
-    "titleField": "title",
     "columns": [
       {
         "field": "title",
@@ -187,38 +236,51 @@
       "inventory",
       "loanStatus"
     ],
+    "form": {
+      "fields": [
+        "title",
+        "author",
+        "category",
+        "inventory"
+      ],
+      "uniqueField": "title",
+      "actions": [
+        "record.create",
+        "record.update"
+      ]
+    },
     "rows": [
       {
         "id": "book-01",
-        "title": "雾港来信",
-        "author": "林遥",
+        "title": "东方快车谋杀案",
+        "author": "阿加莎·克里斯蒂",
         "category": "悬疑小说",
-        "inventory": 6,
+        "inventory": 12,
         "loanStatus": "可借阅"
       },
       {
         "id": "book-02",
-        "title": "月球园丁手记",
-        "author": "周弦",
+        "title": "三体",
+        "author": "刘慈欣",
         "category": "科幻小说",
+        "inventory": 3,
+        "loanStatus": "借阅中"
+      },
+      {
+        "id": "book-03",
+        "title": "活着",
+        "author": "余华",
+        "category": "文学小说",
         "inventory": 0,
         "loanStatus": "已借完"
       },
       {
-        "id": "book-03",
-        "title": "纸上群岛",
-        "author": "顾澄",
-        "category": "文学小说",
-        "inventory": 3,
-        "loanStatus": "可借阅"
-      },
-      {
         "id": "book-04",
-        "title": "风与齿轮的下午",
-        "author": "沈禾",
+        "title": "小王子",
+        "author": "安托万·德·圣埃克苏佩里",
         "category": "少儿读物",
-        "inventory": 1,
-        "loanStatus": "借阅中"
+        "inventory": 8,
+        "loanStatus": "可借阅"
       }
     ]
   }

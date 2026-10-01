@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ListDetail } from "../runtime/data";
+import { recordActions, type ListDetail } from "../runtime/data";
 import { spacing, tokenOptions, themeVersion } from "../runtime/tokens";
 export { spacing } from "../runtime/tokens";
 
@@ -38,7 +38,13 @@ export const nodeSchema: z.ZodType<PageNode> = z.lazy(() => z.object({
 const fieldKey = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/).refine(key => !["id", "__proto__", "constructor", "prototype"].includes(key), "保留字段名");
 export const listDetailSchema: z.ZodType<ListDetail> = z.object({
   entityName: z.string().min(1).max(20), dataSource: z.literal("example"),
-  fields: z.array(z.object({key: fieldKey, label: z.string().min(1).max(40), type: z.enum(["text", "number", "boolean"]), trueLabel: z.string().max(40).optional(), falseLabel: z.string().max(40).optional()}).strict()).min(1).max(20),
+  fields: z.array(z.object({key: fieldKey, label: z.string().min(1).max(40), type: z.enum(["text", "number", "boolean"]), trueLabel: z.string().max(40).optional(), falseLabel: z.string().max(40).optional(),
+    default:z.union([z.string().max(1000),z.number().finite(),z.boolean()]).optional(),required:z.boolean().optional(),
+    minLength:z.number().int().min(0).max(1000).optional(),maxLength:z.number().int().min(1).max(1000).optional(),
+    min:z.number().finite().min(-1e9).max(1e9).optional(),max:z.number().finite().min(-1e9).max(1e9).optional(),integer:z.boolean().optional(),
+    options:z.array(z.object({label:z.string().min(1).max(40),value:z.union([z.string().max(1000),z.number().finite(),z.boolean()])}).strict()).min(1).max(30).optional(),
+  }).strict()).min(1).max(20),
+  form:z.object({fields:z.array(fieldKey).min(1).max(20),uniqueField:fieldKey,actions:z.array(z.enum(recordActions)).min(1).max(2)}).strict().optional(),
   titleField: fieldKey, descriptionField: fieldKey.optional(),
   columns: z.array(z.object({field: fieldKey, title: z.string().min(1).max(40)}).strict()).min(1).max(10),
   searchFields: z.array(fieldKey).min(1).max(20), filters: z.array(fieldKey).max(3), detailFields: z.array(fieldKey).min(1).max(20),

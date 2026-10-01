@@ -12,9 +12,17 @@ export const resources:Resource[]=[
 
 export type RecordValue = string | number | boolean;
 export type DataRecord = { id: string; [key: string]: RecordValue };
+export type RecordField = {
+  key: string; label: string; type: "text" | "number" | "boolean"; trueLabel?: string; falseLabel?: string;
+  default?: RecordValue; required?: boolean; minLength?: number; maxLength?: number;
+  min?: number; max?: number; integer?: boolean; options?: {label:string;value:RecordValue}[];
+};
+export const recordActions = ["record.create", "record.update"] as const;
+export type RecordAction = typeof recordActions[number];
 export type ListDetail = {
   entityName: string;
-  fields: { key: string; label: string; type: "text" | "number" | "boolean"; trueLabel?: string; falseLabel?: string }[];
+  fields: RecordField[];
+  form?: {fields:string[];uniqueField:string;actions:RecordAction[]};
   titleField: string;
   descriptionField?: string;
   columns: { field: string; title: string }[];
@@ -37,6 +45,7 @@ export const resourceListDetail: ListDetail = {
 };
 export function displayValue(config: ListDetail, key: string, value: RecordValue): string {
   const field = config.fields.find(field => field.key === key);
+  const option=field?.options?.find(option=>option.value===value);if(option)return option.label;
   return typeof value === "boolean" ? (value ? field?.trueLabel ?? "是" : field?.falseLabel ?? "否") : String(value);
 }
 export function filterRows(config: ListDetail, query: string, filters: Record<string, string>): DataRecord[] {
