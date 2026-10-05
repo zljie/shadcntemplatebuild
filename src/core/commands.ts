@@ -1,6 +1,7 @@
 import { produce } from "immer";
 import { z } from "zod";
-import { layoutSchema, tokenSchema, nodeSchema, type PageDocument, type PageNode } from "./schema";
+import { layoutSchema, tokenSchema, nodeSchema, listDetailSchema, type PageDocument, type PageNode } from "./schema";
+import type { ListDetail } from "../runtime/data";
 import { locate, validateDocument, validateDrop, type Issue, type Target } from "./validation";
 
 const targetSchema=z.object({parentId:z.string(),slot:z.string(),index:z.number().int().nonnegative()}).strict();
@@ -16,6 +17,7 @@ export type Command =
   | {type:"node.remove";nodeId:string}
   | {type:"node.update";nodeId:string;value:Update}
   | {type:"page.rename";name:string}
+  | {type:"page.listDetail";listDetail?:ListDetail}
   | {type:"batch";commands:Command[]};
 export const commandSchema:z.ZodType<Command>=z.lazy(()=>z.discriminatedUnion("type",[
   z.object({type:z.literal("node.insert"),node:nodeSchema,target:targetSchema}).strict(),
@@ -23,6 +25,7 @@ export const commandSchema:z.ZodType<Command>=z.lazy(()=>z.discriminatedUnion("t
   z.object({type:z.literal("node.remove"),nodeId:z.string()}).strict(),
   z.object({type:z.literal("node.update"),nodeId:z.string(),value:updateSchema}).strict(),
   z.object({type:z.literal("page.rename"),name:z.string().trim().min(1).max(80)}).strict(),
+  z.object({type:z.literal("page.listDetail"),listDetail:listDetailSchema.optional()}).strict(),
   z.object({type:z.literal("batch"),commands:z.array(commandSchema).min(1).max(100)}).strict(),
 ]));
 export type Envelope={id:string;timestamp:string;actor:{type:"human"|"agent"|"system";id:string};pageId:string;baseRevision:number;command:Command};
@@ -41,6 +44,7 @@ export function execute(document:PageDocument,revision:number,envelope:Envelope)
       let inverse:Command | undefined;
       const next=produce(doc,draft=>{
         if(command.type==="page.rename"){inverse={type:"page.rename",name:draft.name};draft.name=command.name;return;}
+        if(command.type==="page.listDetail"){inverse=draft.listDetail?{type:"page.listDetail",listDetail:JSON.parse(JSON.stringify(draft.listDetail))}:{type:"page.listDetail"};if(command.listDetail)draft.listDetail=command.listDetail as typeof draft.listDetail;else delete draft.listDetail;return;}
         if(command.type==="node.insert"){
           const error=validateDrop(draft,command.node,command.target);if(error)throw new Error(error);
           locate(draft,command.target.parentId)!.node.slots[command.target.slot].splice(command.target.index,0,command.node);

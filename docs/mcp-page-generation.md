@@ -1,6 +1,7 @@
 # 面向 AI 的页面生成 MCP：最小闭环
 
 此文保留列表／详情任务的验收记录；后续共享表单、记录动作及最新重跑说明见 [business-forms.md](business-forms.md)。
+> 2026-10-05 更新：模板库、MCP v2（HTTP、apply_commands、内联代码、模板工具）、shadcn registry 与编辑器 AI 对话见 [ai-chat.md](ai-chat.md)。下文工具表为当时的 v1 记录。
 日期：2026-10-01。范围：图书管理、用户管理两种示例列表／详情页面。
 
 ## 实现

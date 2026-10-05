@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/react";
-import { Box, Component, Layers3, LayoutTemplate, MousePointer2, PanelRight, Search, Square, SquareMousePointer, Table2, TextCursorInput, Text, GripVertical, LockKeyhole, ChevronDown } from "lucide-react";
+import { Box, Component, Layers3, LayoutTemplate, MousePointer2, PanelRight, Search, Square, SquareMousePointer, Table2, TextCursorInput, Text, GripVertical, Tag, PanelsTopLeft, LockKeyhole, ChevronDown } from "lucide-react";
 import { registry, makeNode } from "@/core/registry";
 import { useBuilder } from "@/core/store";
 import { locate } from "@/core/validation";
 import type { PageNode } from "@/core/schema";
 import { useEditor } from "./editor-context";
-export const componentIcons:Record<string,typeof Box>={"region.workspace":LayoutTemplate,"layout.stack":Layers3,"shadcn.card":Square,"shadcn.button":SquareMousePointer,"shadcn.input":TextCursorInput,"pattern.page-header":Text,"composite.search-bar":Search,"composite.data-table":Table2,"composite.empty-state":Box,"composite.context-panel":PanelRight,"composite.resource-details":Component};
+export const componentIcons:Record<string,typeof Box>={"region.workspace":LayoutTemplate,"layout.stack":Layers3,"shadcn.card":Square,"shadcn.button":SquareMousePointer,"shadcn.input":TextCursorInput,"shadcn.badge":Tag,"shadcn.tabs":PanelsTopLeft,"pattern.page-header":Text,"composite.search-bar":Search,"composite.data-table":Table2,"composite.empty-state":Box,"composite.context-panel":PanelRight,"composite.resource-details":Component};
 function LibraryItem({componentRef}:{componentRef:string}){const def=registry[componentRef];const Icon=componentIcons[componentRef]??Box;const {ref,handleRef}=useDraggable({id:`library:${componentRef}`,data:{componentRef}});const {target}=useEditor();
   function add(){const s=useBuilder.getState();const selected=s.selectedId?locate(s.document,s.selectedId):undefined;
     const fallback=componentRef==="composite.resource-details"?{parentId:"context",slot:"children",index:s.document.root[1].slots.children.length}:{parentId:"workspace",slot:"children",index:s.document.root[0].slots.children.length};

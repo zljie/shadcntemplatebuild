@@ -12,3 +12,11 @@
 .stack-slot{display:flex;flex-direction:column;gap:12px;min-width:0;align-self:stretch;justify-content:center}.stack-slot-fill{flex:1 1 0}.stack-slot-auto{flex:0 0 auto}.stack-slot .search-input{max-width:none;min-width:0}.stack-slot .runtime-button{white-space:nowrap}
 
 .resource-heading:has(.record-create){position:relative;padding-right:110px}.record-create{position:absolute;right:0;top:0}.record-edit{margin-top:24px}.runtime-form-dialog{font-family:var(--runtime-font-family);font-size:var(--page-font-size);line-height:1.5}.record-form-close{position:absolute;right:16px;top:16px;background:none;border:0;padding:4px}.record-form-close:disabled{opacity:.5}.record-form-field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12px}.record-form-field label{font-weight:500}.record-form-field select{height:36px;border:1px solid var(--input);border-radius:var(--ui-radius-md);padding:0 12px;background:var(--background);color:var(--ink)}.record-form-field :is(input,select)[aria-invalid=true]{border-color:var(--destructive)}.record-field-error,.record-form-message[role=alert]{color:var(--destructive);font-size:12px;margin:0}.record-form-message{font-size:12px;min-height:18px;margin:0 0 16px}.record-form-actions{display:flex;justify-content:flex-end;gap:12px}.record-form-close:focus-visible,.record-form-field select:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+
+/* Badge / Tabs blocks */
+.runtime-badge{font-size:12px}
+.runtime-tabs{display:flex;flex-direction:column;gap:12px;width:100%}
+.runtime-tabs .tabs-panel-body{display:flex;flex-direction:column;gap:12px;min-height:24px}
+.runtime-tabs.editing{gap:8px}
+.tabs-edit-panel{border:1px dashed var(--line);border-radius:8px;padding:8px}
+.tabs-edit-panel>header{font-size:12px;font-weight:600;color:var(--ink-muted);margin-bottom:6px}

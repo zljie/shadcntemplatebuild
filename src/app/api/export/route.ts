@@ -3,10 +3,11 @@ import { zipSync, strToU8 } from "fflate";
 import { exportProject } from "@/core/export-project";
 import { validateDocument } from "@/core/validation";
 import type { PageDocument } from "@/core/schema";
+import { sameOrigin } from "@/core/http";
 export const runtime="nodejs";
 export async function POST(request:Request){
   try{
-    const origin=request.headers.get("origin");if(origin&&origin!==new URL(request.url).origin)return NextResponse.json({error:"跨站导出请求被拒绝"},{status:403});
+    if(!sameOrigin(request))return NextResponse.json({error:"跨站导出请求被拒绝"},{status:403});
     const text=await request.text();if(text.length>2_000_000)return NextResponse.json({error:"文档超过 2 MB 限制"},{status:413});
     const body=JSON.parse(text);const issues=validateDocument(body.document);if(issues.length)return NextResponse.json({error:issues.map(e=>`${e.path}: ${e.message}`).join("；")},{status:400});
     const files=await exportProject(body.document as PageDocument);

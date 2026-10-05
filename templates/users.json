@@ -1,0 +1,278 @@
+{
+  "id": "users",
+  "name": "用户管理",
+  "description": "用户列表／详情，角色与启用状态筛选，新增与编辑表单（示例数据）。",
+  "tags": [
+    "列表",
+    "表单",
+    "CRUD"
+  ],
+  "source": "seed",
+  "updatedAt": "2026-10-04T16:24:28.523Z",
+  "document": {
+    "schemaVersion": "0.1.0",
+    "id": "user-management",
+    "name": "用户管理",
+    "shell": {
+      "variant": "contextual",
+      "version": "0.1.0",
+      "workspaceName": "Acme Workspace"
+    },
+    "root": [
+      {
+        "id": "workspace",
+        "componentRef": "region.workspace",
+        "componentVersion": "0.1.0",
+        "props": {},
+        "layout": {},
+        "tokens": {},
+        "responsive": {},
+        "slots": {
+          "children": [
+            {
+              "id": "page-header",
+              "componentRef": "pattern.page-header",
+              "componentVersion": "0.1.0",
+              "props": {
+                "title": "用户管理",
+                "description": "SIMULATION 示例数据：仅在当前会话内模拟新增与编辑，刷新后恢复；不连接任何真实接口。"
+              },
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [],
+              "meta": {
+                "locked": false
+              }
+            },
+            {
+              "id": "search-bar",
+              "componentRef": "composite.search-bar",
+              "componentVersion": "0.1.0",
+              "props": {
+                "placeholder": "搜索姓名或账号…"
+              },
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [],
+              "meta": {
+                "locked": false
+              }
+            },
+            {
+              "id": "resource-table",
+              "componentRef": "composite.data-table",
+              "componentVersion": "0.1.0",
+              "props": {
+                "density": "comfortable"
+              },
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [
+                {
+                  "event": "row.select",
+                  "capabilityRef": "context.open"
+                }
+              ],
+              "meta": {
+                "locked": false
+              }
+            }
+          ]
+        },
+        "actions": [],
+        "meta": {
+          "locked": true
+        }
+      },
+      {
+        "id": "context",
+        "componentRef": "composite.context-panel",
+        "componentVersion": "0.1.0",
+        "props": {
+          "title": "用户详情"
+        },
+        "layout": {},
+        "tokens": {},
+        "responsive": {},
+        "slots": {
+          "children": [
+            {
+              "id": "resource-details",
+              "componentRef": "composite.resource-details",
+              "componentVersion": "0.1.0",
+              "props": {},
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [],
+              "meta": {
+                "locked": false
+              }
+            }
+          ]
+        },
+        "actions": [],
+        "meta": {
+          "locked": true
+        }
+      }
+    ],
+    "dependencies": {
+      "pageSchema": "0.1.0",
+      "componentRegistry": "0.1.0",
+      "designTokens": "provisional-0.1.0",
+      "codeGenerator": "0.1.0"
+    },
+    "listDetail": {
+      "entityName": "用户",
+      "dataSource": "example",
+      "titleField": "name",
+      "fields": [
+        {
+          "key": "name",
+          "label": "姓名",
+          "type": "text",
+          "default": "",
+          "required": true,
+          "minLength": 1,
+          "maxLength": 80
+        },
+        {
+          "key": "account",
+          "label": "账号",
+          "type": "text",
+          "default": "",
+          "required": true,
+          "minLength": 1,
+          "maxLength": 80
+        },
+        {
+          "key": "role",
+          "label": "角色",
+          "type": "text",
+          "default": "读者",
+          "required": true,
+          "options": [
+            {
+              "label": "管理员",
+              "value": "管理员"
+            },
+            {
+              "label": "馆员",
+              "value": "馆员"
+            },
+            {
+              "label": "读者",
+              "value": "读者"
+            },
+            {
+              "label": "审计员",
+              "value": "审计员"
+            }
+          ]
+        },
+        {
+          "key": "enabled",
+          "label": "启用状态",
+          "type": "boolean",
+          "default": true,
+          "required": true,
+          "trueLabel": "启用",
+          "falseLabel": "停用",
+          "options": [
+            {
+              "label": "启用",
+              "value": true
+            },
+            {
+              "label": "停用",
+              "value": false
+            }
+          ]
+        }
+      ],
+      "columns": [
+        {
+          "field": "name",
+          "title": "姓名"
+        },
+        {
+          "field": "account",
+          "title": "账号"
+        },
+        {
+          "field": "role",
+          "title": "角色"
+        },
+        {
+          "field": "enabled",
+          "title": "启用状态"
+        }
+      ],
+      "searchFields": [
+        "name",
+        "account"
+      ],
+      "filters": [
+        "role",
+        "enabled"
+      ],
+      "detailFields": [
+        "name",
+        "account",
+        "role",
+        "enabled"
+      ],
+      "form": {
+        "fields": [
+          "name",
+          "account",
+          "role",
+          "enabled"
+        ],
+        "uniqueField": "account",
+        "actions": [
+          "record.create",
+          "record.update"
+        ]
+      },
+      "rows": [
+        {
+          "id": "user-01",
+          "name": "张伟",
+          "account": "zhangwei",
+          "role": "管理员",
+          "enabled": true
+        },
+        {
+          "id": "user-02",
+          "name": "李娜",
+          "account": "lina",
+          "role": "馆员",
+          "enabled": true
+        },
+        {
+          "id": "user-03",
+          "name": "王强",
+          "account": "wangqiang",
+          "role": "读者",
+          "enabled": false
+        },
+        {
+          "id": "user-04",
+          "name": "陈静",
+          "account": "chenjing",
+          "role": "审计员",
+          "enabled": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "id": "resource-center",
+  "name": "资源中心",
+  "description": "默认列表／详情页：技能、MCP、文档资源的搜索、筛选与详情。",
+  "tags": [
+    "列表",
+    "详情"
+  ],
+  "source": "seed",
+  "updatedAt": "2026-10-04T16:24:28.508Z",
+  "document": {
+    "schemaVersion": "0.1.0",
+    "id": "resource-page",
+    "name": "资源管理",
+    "shell": {
+      "variant": "contextual",
+      "version": "0.1.0",
+      "workspaceName": "Acme Workspace"
+    },
+    "root": [
+      {
+        "id": "workspace",
+        "componentRef": "region.workspace",
+        "componentVersion": "0.1.0",
+        "props": {},
+        "layout": {},
+        "tokens": {},
+        "responsive": {},
+        "slots": {
+          "children": [
+            {
+              "id": "page-header",
+              "componentRef": "pattern.page-header",
+              "componentVersion": "0.1.0",
+              "props": {
+                "title": "资源中心",
+                "description": "集中管理工作空间中的技能、工具和知识。"
+              },
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [],
+              "meta": {
+                "locked": false
+              }
+            },
+            {
+              "id": "search-bar",
+              "componentRef": "composite.search-bar",
+              "componentVersion": "0.1.0",
+              "props": {
+                "placeholder": "搜索资源名称或描述…"
+              },
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [],
+              "meta": {
+                "locked": false
+              }
+            },
+            {
+              "id": "resource-table",
+              "componentRef": "composite.data-table",
+              "componentVersion": "0.1.0",
+              "props": {
+                "density": "comfortable"
+              },
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [
+                {
+                  "event": "row.select",
+                  "capabilityRef": "context.open"
+                }
+              ],
+              "meta": {
+                "locked": false
+              }
+            }
+          ]
+        },
+        "actions": [],
+        "meta": {
+          "locked": true
+        }
+      },
+      {
+        "id": "context",
+        "componentRef": "composite.context-panel",
+        "componentVersion": "0.1.0",
+        "props": {
+          "title": "资源详情"
+        },
+        "layout": {},
+        "tokens": {},
+        "responsive": {},
+        "slots": {
+          "children": [
+            {
+              "id": "resource-details",
+              "componentRef": "composite.resource-details",
+              "componentVersion": "0.1.0",
+              "props": {},
+              "layout": {},
+              "tokens": {},
+              "responsive": {},
+              "slots": {},
+              "actions": [],
+              "meta": {
+                "locked": false
+              }
+            }
+          ]
+        },
+        "actions": [],
+        "meta": {
+          "locked": true
+        }
+      }
+    ],
+    "dependencies": {
+      "pageSchema": "0.1.0",
+      "componentRegistry": "0.1.0",
+      "designTokens": "provisional-0.1.0",
+      "codeGenerator": "0.1.0"
+    }
+  }
+}

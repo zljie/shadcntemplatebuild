@@ -10,9 +10,10 @@ export function PageRenderer({document,frame,slot,editing=false}:{document:PageD
     if(!Component)return <div key={node.id} role="alert">缺少组件：{node.componentRef}。节点数据已保留。</div>;
     const children=Object.entries(node.slots).sort(([a],[b])=>a.localeCompare(b)).map(([name,nodes])=>{
       const content=slot?slot(node,name,nodes.map(render)):nodes.map(render);
+      if(node.componentRef==="shadcn.tabs")return <components.TabsSlot key={name} name={name}>{content}</components.TabsSlot>;
       return node.componentRef==="layout.stack"&&Object.keys(node.slots).length>1?<components.StackSlot key={name} name={name} width={(node.props.slotWidths as Record<string,"fill"|"auto">|undefined)?.[name]}>{content}</components.StackSlot>:content;
     });
-    const extra=node.componentRef==="composite.context-panel"?{editing}:node.componentRef==="composite.data-table"?{openDetails:node.actions.some(a=>a.capabilityRef==="context.open")}:{};
+    const extra=node.componentRef==="composite.context-panel"||node.componentRef==="shadcn.tabs"?{editing}:node.componentRef==="composite.data-table"?{openDetails:node.actions.some(a=>a.capabilityRef==="context.open")}:{};
     const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra}>{children}</Component>;
     return frame?frame(node,element):element;
   }

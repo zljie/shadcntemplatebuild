@@ -65,7 +65,7 @@ describe("Component sources and shared theme",()=>{
   it("records every implementation, real symbol, source file and dependency without claiming an upstream version",async()=>{
     const files=await exportProject(createDocument());
     const pkg=JSON.parse(files["package.json"]);
-    expect(Object.keys(registry)).toHaveLength(11);
+    expect(Object.keys(registry)).toHaveLength(13);
     for(const definition of Object.values(registry)){
       expect(definition.source.name).toBe("project");
       expect(definition).toMatchObject(componentSources[definition.exportName]);

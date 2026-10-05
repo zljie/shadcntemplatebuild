@@ -32,6 +32,11 @@ export const componentSources: Record<string, ComponentSource> = {
   DialogContent: uiSource("DialogContent", "dialog", ["Dialog", "Button", "cn"], ["react", "radix-ui", "lucide-react"]),
   DialogTitle: uiSource("DialogTitle", "dialog", ["Dialog"], ["react", "radix-ui"]),
   DialogDescription: uiSource("DialogDescription", "dialog", ["Dialog"], ["react", "radix-ui"]),
+  Badge: uiSource("Badge", "badge", ["cn"], ["react", "radix-ui", "class-variance-authority"]),
+  Tabs: uiSource("Tabs", "tabs", ["cn"], ["react", "radix-ui", "class-variance-authority"]),
+  TabsList: uiSource("TabsList", "tabs", ["Tabs", "cn"], ["react", "radix-ui", "class-variance-authority"]),
+  TabsTrigger: uiSource("TabsTrigger", "tabs", ["Tabs", "cn"], ["react", "radix-ui"]),
+  TabsContent: uiSource("TabsContent", "tabs", ["Tabs", "cn"], ["react", "radix-ui"]),
   cn: projectSource("cn", "utility", "组合 className 与 Tailwind 类", [], ["clsx", "tailwind-merge"], "src/core/utils.ts"),
   tokenValues: {...projectSource("tokenValues", "utility", "受控 DSL Token 到共享 CSS variables 的唯一映射", [], [], "src/runtime/tokens.ts"), files: ["src/runtime/tokens.ts", "src/runtime/theme.css", "src/runtime/styles.css"]},
   presentation: projectSource("presentation", "adapter", "受控布局、响应式与 Token 转换为节点样式", ["tokenValues"], [], "src/runtime/presentation.ts"),
@@ -53,6 +58,9 @@ export const componentSources: Record<string, ComponentSource> = {
   Stack: projectSource("Stack", "layout", "排列 DSL 子节点；不实现基础 UI", ["presentation", "StackSlot"]),
   CardBlock: projectSource("CardBlock", "adapter", "DSL 标题、内容槽位和布局适配，底层 Card 来自 shadcn", ["presentation", "Card", "CardContent", "CardHeader", "CardTitle"]),
   ButtonBlock: projectSource("ButtonBlock", "adapter", "DSL 文案与 variant 适配、示例提示动作，底层 Button 来自 shadcn", ["presentation", "Button", "useRuntime"], ["react", "lucide-react"]),
+  BadgeBlock: projectSource("BadgeBlock", "adapter", "DSL 文案与 variant 适配，底层 Badge 来自 shadcn", ["presentation", "Badge"]),
+  TabsSlot: projectSource("TabsSlot", "layout", "标记 Tabs 的命名槽位", []),
+  TabsBlock: projectSource("TabsBlock", "adapter", "DSL 标签与三个命名槽位适配；编辑态平铺全部面板，底层 Tabs 来自 shadcn", ["presentation", "Tabs", "TabsList", "TabsTrigger", "TabsContent", "TabsSlot"]),
   InputBlock: projectSource("InputBlock", "adapter", "DSL 标签、占位文案与可访问 ID 适配，底层 Input 来自 shadcn", ["presentation", "Input"]),
   PageHeader: projectSource("PageHeader", "composition", "组合页面标题、说明与配置数据统计；兼容原资源指标", ["presentation", "resources", "useRuntime"], ["react", "lucide-react"]),
   SearchBar: projectSource("SearchBar", "composition", "组合 shadcn Input、原生 select 与 Runtime 搜索筛选", ["presentation", "Input", "useRuntime", "displayValue"], ["react", "lucide-react"]),
@@ -71,14 +79,17 @@ const text = z.string().max(200);
 const longText = z.string().max(1000);
 const field = (key: string, label: string, type: Field["type"] = "text", options?: string[]): Field => ({key,label,type,options});
 const definition = (value: Omit<Definition, keyof ComponentSource> & {exportName: string}): Definition => ({...componentSources[value.exportName], ...value});
-const content = ["layout.stack", "shadcn.card", "shadcn.button", "shadcn.input", "pattern.page-header", "composite.search-bar", "composite.data-table", "composite.empty-state"];
-const parents = ["region.workspace", "layout.stack", "shadcn.card"];
+const content = ["layout.stack", "shadcn.card", "shadcn.tabs", "shadcn.button", "shadcn.input", "shadcn.badge", "pattern.page-header", "composite.search-bar", "composite.data-table", "composite.empty-state"];
+const parents = ["region.workspace", "layout.stack", "shadcn.card", "shadcn.tabs"];
+const tabSlot = (label: string) => ({label, accepts: content.filter(x=>x!=="pattern.page-header"&&x!=="shadcn.tabs"), max: 30});
 export const registry: Record<string, Definition> = {
   "region.workspace": definition({name:"工作区",description:"锁定的主内容区域",category:"布局",exportName:"WorkspacePane",schema:z.object({}).strict(),fields:[],defaults:{},slots:{children:{label:"主内容",accepts:content,max:100}},parents:[],internal:true}),
   "layout.stack": definition({name:"Stack",description:"有序排列一组组件",category:"布局",exportName:"Stack",schema:z.object({slotWidths:z.record(z.string().regex(/^(children|slot-[1-5])$/),z.enum(["fill","auto"])).optional()}).strict(),fields:[],defaults:{},slots:{children:{label:"内容",accepts:content,max:50}},parents}),
   "shadcn.card": definition({name:"Card",description:"有边界的内容容器",category:"基础",exportName:"CardBlock",schema:z.object({title:text}).strict(),fields:[field("title","卡片标题")],defaults:{title:"内容卡片"},slots:{children:{label:"卡片内容",accepts:content.filter(x=>x!=="pattern.page-header"),max:30}},parents}),
   "shadcn.button": definition({name:"Button",description:"标准操作按钮",category:"基础",exportName:"ButtonBlock",schema:z.object({text:text.min(1),variant:z.enum(["default","outline","secondary"]),message:text.min(1)}).strict(),fields:[field("text","按钮文案"),field("variant","按钮样式","select",["default","outline","secondary"]),field("message","点击提示")],defaults:{text:"了解更多",variant:"outline",message:"这是可配置的示例操作。"},slots:{},parents}),
   "shadcn.input": definition({name:"Input",description:"带标签的文本输入",category:"基础",exportName:"InputBlock",schema:z.object({label:text.min(1),placeholder:text}).strict(),fields:[field("label","字段标签"),field("placeholder","占位文案")],defaults:{label:"资源名称",placeholder:"输入资源名称"},slots:{},parents}),
+  "shadcn.badge": definition({name:"Badge",description:"状态或标签徽标",category:"基础",exportName:"BadgeBlock",schema:z.object({text:text.min(1).max(40),variant:z.enum(["default","secondary","outline","destructive"])}).strict(),fields:[field("text","徽标文案"),field("variant","徽标样式","select",["default","secondary","outline","destructive"])],defaults:{text:"新",variant:"secondary"},slots:{},parents}),
+  "shadcn.tabs": definition({name:"Tabs",description:"分页签切换的内容区（最多 3 个，标签留空即隐藏）",category:"基础",exportName:"TabsBlock",schema:z.object({label1:text.min(1).max(40),label2:text.max(40),label3:text.max(40)}).strict(),fields:[field("label1","页签 1"),field("label2","页签 2（留空隐藏）"),field("label3","页签 3（留空隐藏）")],defaults:{label1:"概览",label2:"详情",label3:""},slots:{"tab-1":tabSlot("页签 1"),"tab-2":tabSlot("页签 2"),"tab-3":tabSlot("页签 3")},parents:["region.workspace","layout.stack","shadcn.card"]}),
   "pattern.page-header": definition({name:"PageHeader",description:"页面标题与说明",category:"业务",exportName:"PageHeader",schema:z.object({title:text.min(1),description:longText}).strict(),fields:[field("title","页面标题"),field("description","页面说明","textarea")],defaults:{title:"资源中心",description:"集中管理工作空间中的技能、工具和知识。"},slots:{},parents:["region.workspace","layout.stack"]}),
   "composite.search-bar": definition({name:"SearchBar",description:"按页面配置搜索与筛选",category:"业务",exportName:"SearchBar",schema:z.object({placeholder:text}).strict(),fields:[field("placeholder","搜索提示")],defaults:{placeholder:"搜索资源名称或描述…"},slots:{},parents}),
   "composite.data-table": definition({name:"DataTable",description:"可配置的业务列表",category:"业务",exportName:"DataTable",schema:z.object({density:z.enum(["comfortable","compact"])}).strict(),fields:[field("density","行间距","select",["comfortable","compact"])],defaults:{density:"comfortable"},slots:{},parents}),
