@@ -16,6 +16,7 @@ export type RecordField = {
   key: string; label: string; type: "text" | "number" | "boolean"; trueLabel?: string; falseLabel?: string;
   default?: RecordValue; required?: boolean; minLength?: number; maxLength?: number;
   min?: number; max?: number; integer?: boolean; options?: {label:string;value:RecordValue}[];
+  format?: "date" | "textarea";
 };
 export const recordActions = ["record.create", "record.update"] as const;
 export type RecordAction = typeof recordActions[number];

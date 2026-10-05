@@ -3,7 +3,7 @@ import { type ComponentType, type ReactNode } from "react";
 import { type PageDocument, type PageNode } from "@/core/schema";
 import { registry } from "@/core/registry";
 import * as components from "./components";
-export function PageRenderer({document,frame,slot,editing=false}:{document:PageDocument;frame?:(node:PageNode,children:ReactNode)=>ReactNode;slot?:(node:PageNode,name:string,children:ReactNode[])=>ReactNode;editing?:boolean}){
+export function PageRenderer({document,frame,slot,editing=false,adapter,navigation}:{document:PageDocument;frame?:(node:PageNode,children:ReactNode)=>ReactNode;slot?:(node:PageNode,name:string,children:ReactNode[])=>ReactNode;editing?:boolean;adapter?:components.RecordAdapter;navigation?:components.Navigation}){
   function render(node:PageNode):ReactNode {
     const definition=registry[node.componentRef];
     const Component=definition&&(components as unknown as Record<string,ComponentType<Record<string,unknown>>>)[definition.exportName];
@@ -17,5 +17,5 @@ export function PageRenderer({document,frame,slot,editing=false}:{document:PageD
     const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra}>{children}</Component>;
     return frame?frame(node,element):element;
   }
-  return <components.RuntimeProvider key={JSON.stringify(document.listDetail)} listDetail={document.listDetail} pageTitle={document.name}><components.ContextualShell workspaceName={document.shell.workspaceName}>{document.root.map(render)}</components.ContextualShell></components.RuntimeProvider>;
+  return <components.RuntimeProvider key={JSON.stringify(document.listDetail)} listDetail={document.listDetail} pageTitle={document.name} adapter={adapter} navigation={navigation}><components.ContextualShell workspaceName={document.shell.workspaceName}>{document.root.map(render)}</components.ContextualShell></components.RuntimeProvider>;
 }

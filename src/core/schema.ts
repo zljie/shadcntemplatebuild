@@ -43,6 +43,7 @@ export const listDetailSchema: z.ZodType<ListDetail> = z.object({
     minLength:z.number().int().min(0).max(1000).optional(),maxLength:z.number().int().min(1).max(1000).optional(),
     min:z.number().finite().min(-1e9).max(1e9).optional(),max:z.number().finite().min(-1e9).max(1e9).optional(),integer:z.boolean().optional(),
     options:z.array(z.object({label:z.string().min(1).max(40),value:z.union([z.string().max(1000),z.number().finite(),z.boolean()])}).strict()).min(1).max(30).optional(),
+    format:z.enum(["date","textarea"]).optional(),
   }).strict()).min(1).max(20),
   form:z.object({fields:z.array(fieldKey).min(1).max(20),uniqueField:fieldKey,actions:z.array(z.enum(recordActions)).min(1).max(2)}).strict().optional(),
   titleField: fieldKey, descriptionField: fieldKey.optional(),

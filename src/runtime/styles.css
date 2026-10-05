@@ -20,3 +20,6 @@
 .runtime-tabs.editing{gap:8px}
 .tabs-edit-panel{border:1px dashed var(--line);border-radius:8px;padding:8px}
 .tabs-edit-panel>header{font-size:12px;font-weight:600;color:var(--ink-muted);margin-bottom:6px}
+
+/* Persistent prototypes: anchor navigation, long text and detail-page link */
+a.runtime-nav{text-decoration:none}a.runtime-nav:hover{background:#f3f5f4}.record-textarea{border:1px solid var(--input);border-radius:var(--ui-radius-md);padding:8px 12px;background:var(--background);color:var(--ink);resize:vertical}.record-textarea[aria-invalid=true]{border-color:var(--destructive)}.record-open{margin-top:12px;margin-left:8px}

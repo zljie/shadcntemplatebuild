@@ -11,6 +11,7 @@ export function fieldError(field:RecordField,value:unknown):string | undefined {
   }
   if(typeof value==="number"&&(!Number.isFinite(value)||(field.integer&&!Number.isInteger(value))||value<(field.min??-1e9)||value>(field.max??1e9)))return `${field.label}应为 ${field.min??-1e9}–${field.max??1e9} 范围内的${field.integer?"整数":"数字"}`;
   if(field.options&&!field.options.some(option=>option.value===value))return `请选择有效的${field.label}`;
+  if(field.format==="date"&&typeof value==="string"&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value))return `${field.label}应为 YYYY-MM-DD 格式`;
 }
 export function validateBusinessConfig(config:ListDetail):RecordIssue[]{
   if(!config.form)return config.fields.some(field=>[field.default,field.required,field.minLength,field.maxLength,field.min,field.max,field.integer,field.options].some(value=>value!==undefined))?[{path:"listDetail.form",message:"字段约束需要声明表单配置"}]:[];
@@ -44,34 +45,44 @@ export function validateBusinessConfig(config:ListDetail):RecordIssue[]{
   return issues;
 }
 
-// ponytail: session-only rows and idempotency ledger, bounded to small demos; persistent adapters belong to a separate task.
+export type RecordRequest={operationId:string;action:string;recordId?:string;values:Record<string,unknown>};
+const fail=(errors:RecordIssue[],message="提交失败，请检查输入后重试。"):RecordResult=>({ok:false,errors,message});
+/** Validates one create/update request against config.form and applies it to rows. Shared by the session adapter and the SQLite store. */
+export function applyRecordRequest(config:ListDetail,rows:DataRecord[],request:unknown,{maxRows=200,newId=()=>crypto.randomUUID()}:{maxRows?:number;newId?:()=>string}={}):RecordResult{
+  if(!request||typeof request!=="object"||Array.isArray(request))return fail([{path:"action",message:"非法操作请求"}]);
+  const input=request as Record<string,unknown>;
+  if(Object.keys(input).some(key=>!["operationId","action","recordId","values"].includes(key)))return fail([{path:"action",message:"未注册请求属性"}]);
+  const form=config.form;
+  if(!form)return fail([{path:"form",message:"非法表单配置"}]);
+  if(!recordActions.some(action=>action===input.action)||!form.actions.some(action=>action===input.action))return fail([{path:"action",message:"未注册或未启用动作"}]);
+  const old=input.action==="record.update"?rows.find(row=>row.id===input.recordId):undefined;
+  if(input.action==="record.update"&&!old)return fail([{path:"recordId",message:"要编辑的记录不存在"}]);
+  if(input.action==="record.create"&&input.recordId!==undefined)return fail([{path:"recordId",message:"新增不能指定记录 ID"}]);
+  if(!input.values||typeof input.values!=="object"||Array.isArray(input.values))return fail([{path:"values",message:"非法字段输入"}]);
+  const values=input.values as Record<string,unknown>,errors:RecordIssue[]=[];
+  Object.keys(values).forEach(key=>{if(!form.fields.includes(key))errors.push({path:`values.${key}`,message:"未注册或只读字段"});});
+  form.fields.forEach(key=>{const error=fieldError(config.fields.find(field=>field.key===key)!,values[key]);if(error)errors.push({path:`values.${key}`,message:error});});
+  if(errors.length)return fail(errors);
+  if(rows.some(row=>row.id!==old?.id&&row[form.uniqueField]===values[form.uniqueField]))return fail([{path:`values.${form.uniqueField}`,message:`${config.fields.find(f=>f.key===form.uniqueField)!.label}已存在`}],"提交失败：已有相同记录，请修改后重试。");
+  if(!old&&rows.length>=maxRows)return fail([{path:"rows",message:`记录上限为 ${maxRows} 条`}]);
+  const record={...(old??Object.fromEntries(config.fields.map(field=>[field.key,field.default]))),...values,id:old?.id??newId()} as DataRecord;
+  config.fields.forEach(field=>{const error=fieldError(field,record[field.key]);if(error)errors.push({path:`values.${field.key}`,message:error});});
+  if(errors.length)return fail(errors);
+  const next=old?rows.map(row=>row.id===old.id?record:row):[...rows,record];
+  return {ok:true,record:structuredClone(record),rows:structuredClone(next)};
+}
+
+// ponytail: session-only rows and idempotency ledger, bounded to small demos; the SQLite adapter lives in src/server.
 export function createRecordSession(config:ListDetail){
   const snapshot=structuredClone(config);
   let rows=structuredClone(snapshot.rows);
   const operations=new Map<string,{signature:string;result:Promise<RecordResult>}>();
-  const fail=(errors:RecordIssue[],message="提交失败，请检查输入后重试。"):RecordResult=>({ok:false,errors,message});
   async function apply(request:unknown):Promise<RecordResult>{
-    if(!request||typeof request!=="object"||Array.isArray(request))return fail([{path:"action",message:"非法操作请求"}]);
-    const input=request as Record<string,unknown>;
-    if(Object.keys(input).some(key=>!["operationId","action","recordId","values"].includes(key)))return fail([{path:"action",message:"未注册请求属性"}]);
-    const form=snapshot.form;
-    if(validateBusinessConfig(snapshot).length||!form)return fail([{path:"form",message:"非法表单配置"}]);
-    if(!recordActions.some(action=>action===input.action)||!form.actions.some(action=>action===input.action))return fail([{path:"action",message:"未注册或未启用动作"}]);
-    const old=input.action==="record.update"?rows.find(row=>row.id===input.recordId):undefined;
-    if(input.action==="record.update"&&!old)return fail([{path:"recordId",message:"要编辑的记录不存在"}]);
-    if(input.action==="record.create"&&input.recordId!==undefined)return fail([{path:"recordId",message:"新增不能指定记录 ID"}]);
-    if(!input.values||typeof input.values!=="object"||Array.isArray(input.values))return fail([{path:"values",message:"非法字段输入"}]);
-    const values=input.values as Record<string,unknown>,errors:RecordIssue[]=[];
-    Object.keys(values).forEach(key=>{if(!form.fields.includes(key))errors.push({path:`values.${key}`,message:"未注册或只读字段"});});
-    form.fields.forEach(key=>{const error=fieldError(snapshot.fields.find(field=>field.key===key)!,values[key]);if(error)errors.push({path:`values.${key}`,message:error});});
-    if(errors.length)return fail(errors);
-    if(rows.some(row=>row.id!==old?.id&&row[form.uniqueField]===values[form.uniqueField]))return fail([{path:`values.${form.uniqueField}`,message:`${snapshot.fields.find(f=>f.key===form.uniqueField)!.label}已存在`}],"模拟提交失败：已有相同记录，请修改后重试。");
-    if(!old&&rows.length>=200)return fail([{path:"rows",message:"示例记录上限为 200 条"}]);
-    const record={...(old??Object.fromEntries(snapshot.fields.map(field=>[field.key,field.default]))),...values,id:old?.id??crypto.randomUUID()} as DataRecord;
-    snapshot.fields.forEach(field=>{const error=fieldError(field,record[field.key]);if(error)errors.push({path:`values.${field.key}`,message:error});});
-    if(errors.length)return fail(errors);
-    rows=old?rows.map(row=>row.id===old.id?record:row):[...rows,record];
-    return {ok:true,record:structuredClone(record),rows:structuredClone(rows)};
+    if(validateBusinessConfig(snapshot).length||!snapshot.form)return fail([{path:"form",message:"非法表单配置"}]);
+    const result=applyRecordRequest(snapshot,rows,request);
+    if(!result.ok&&result.message==="提交失败：已有相同记录，请修改后重试。")return {...result,message:"模拟提交失败：已有相同记录，请修改后重试。"};
+    if(result.ok)rows=result.rows;
+    return result;
   }
   return {
     get rows(){return structuredClone(rows);},

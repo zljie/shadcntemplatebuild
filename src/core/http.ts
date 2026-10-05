@@ -19,3 +19,20 @@ export function sameOrigin(request: Request): boolean {
   ].filter(Boolean);
   return hosts.includes(originHost);
 }
+
+/** Parses a bounded JSON body; returns a Response on failure. */
+export async function readJson(request: Request, limit = 2_000_000): Promise<{ body: Record<string, unknown> } | { error: Response }> {
+  if (!sameOrigin(request)) return { error: Response.json({ error: "跨站请求被拒绝" }, { status: 403 }) };
+  const text = await request.text();
+  if (text.length > limit) return { error: Response.json({ error: "请求体过大" }, { status: 413 }) };
+  try {
+    const body = JSON.parse(text);
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
+    return { body };
+  } catch {
+    return { error: Response.json({ error: "无效 JSON" }, { status: 400 }) };
+  }
+}
+
+export const issuesResponse = (errors: { path: string; message: string }[], status = 400) =>
+  Response.json({ error: errors.map((e) => `${e.path}: ${e.message}`).join("；"), errors }, { status });
