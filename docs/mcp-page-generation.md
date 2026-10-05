@@ -21,7 +21,7 @@
 
 ## 启动与连接
 
-使用 Node 22，在仓库根目录执行：
+使用 Node 24，在仓库根目录执行：
 
 ```sh
 npm ci
@@ -55,7 +55,7 @@ tool_timeout_sec = 60
 
 ## 实际客户端调用示例
 
-在仓库根目录、Node 22 环境运行。更换 `DSL_FILE` 可验证另一页；每次导出都会创建新目录。
+在仓库根目录、Node 24 环境运行。更换 `DSL_FILE` 可验证另一页；每次导出都会创建新目录。
 
 ```sh
 DSL_FILE=examples/books.dsl.json node --import tsx --input-type=module <<'JS'

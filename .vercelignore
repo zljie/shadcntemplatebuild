@@ -1,0 +1,8 @@
+# Local artifacts; Vercel installs and builds from source.
+node_modules
+.next
+exports
+test-results
+data
+.env*.local
+*.tsbuildinfo

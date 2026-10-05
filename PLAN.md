@@ -64,7 +64,7 @@
 7. 生成阶段使用已锁定的本地快照，不临时下载上游最新版。干净工程的依赖安装可以使用网络或依赖缓存。
 8. 保留现有 Shell 锁定、命令回滚和非法修改拒绝行为；迁移失败不得覆盖原始草稿。
 9. 保留 Next.js App Router 的 `src/app` 结构。实现前阅读本地 `node_modules/next/dist/docs/` 的相关指南。
-10. Node 使用 22；需要 Python 时使用 python3。
+10. Node 使用 24（2026-10-05 由 22 升级）；需要 Python 时使用 python3。
 
 DataTable 按官方组合指南处理。搜索、列配置、选择和详情联动属于 Pattern／Runtime 配置，不能假定官方提供一个通用组件接受 `searchable: true` 就完成全部功能。
 
