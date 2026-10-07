@@ -98,7 +98,7 @@ try{
   await stack.scrollIntoViewIfNeeded();
   await page.screenshot({path:'/tmp/composer-slots.png',fullPage:true});
   const response=await page.request.post(new URL('/api/export',page.url()).href,{data:{document:original,format:'code'}});
-  assert(response.ok());const generated=await response.json();assert(generated.code.includes('StackSlot'));
+  assert(response.ok());const generated=await response.json();assert(generated.code.includes('slots={{'));assert(generated.code.includes('"slot-1"'));assert(!generated.code.includes('<StackSlot'));
   assert.deepEqual(errors,[]);
   console.log('PASS: palette and cross-slot drag, slot creation/removal/undo, horizontal layout, mobile layout, search/type filter/empty result/selection/detail close/button actions, IndexedDB restore, DSL download/import, generated code');
 }catch(error){await page.screenshot({path:'/tmp/composer-slots-failure.png',fullPage:true});console.error(await page.locator('body').innerText());throw error;}finally{await browser.close();}

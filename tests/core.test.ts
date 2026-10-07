@@ -41,7 +41,7 @@ describe("Stack slots",()=>{
     const html=renderToStaticMarkup(createElement(PageRenderer,{document:doc}));
     expect(html).toContain('stack-slot-fill" data-slot="children"');expect(html).toContain('stack-slot-auto" data-slot="slot-1"');
     const files=await exportProject(doc);expect(JSON.parse(files["page.dsl.json"])).toEqual(doc);
-    expect(files["src/app/page.tsx"]).toContain('<StackSlot name={"slot-1"} width={"auto"}>');
+    expect(files["src/app/page.tsx"]).toContain('"slot-1": (');expect(files["src/app/page.tsx"]).toContain('slotWidths={{ children: "fill", "slot-1": "auto" }}');
     expect(files["src/app/page.tsx"].indexOf("<SearchBar")).toBeLessThan(files["src/app/page.tsx"].indexOf("<ButtonBlock"));
   });
   it("reverses slot creation, deletion, widths and cross-slot moves",()=>{

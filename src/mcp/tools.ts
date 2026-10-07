@@ -60,7 +60,7 @@ export function createPageServer({
     "list_components",
     {
       description:
-        "List the registered DSL components (the ONLY components a page may use). detail='summary' (default) returns name, description, props keys, slots and allowed parents; detail='full' adds JSON Schemas and source metadata. Use get_component for one component in full.",
+        "List the registered DSL components (the ONLY components a page may use). detail='summary' (default) returns name, description, props keys, slots, allowed parents and AI usage guidance; detail='full' adds JSON Schemas and source metadata. Use get_component for one component in full.",
       inputSchema: z
         .object({ detail: z.enum(["summary", "full"]).optional() })
         .strict(),
@@ -77,7 +77,7 @@ export function createPageServer({
     "get_component",
     {
       description:
-        "Full definition of one componentRef: props JSON Schema, defaults, slots, parents, actions, source files and dependencies.",
+        "Full definition of one componentRef: props JSON Schema, defaults, slots, parents, actions, AI component/field guidance, source files and dependencies.",
       inputSchema: z.object({ componentRef: z.string().max(80) }).strict(),
       annotations: readOnly,
     },

@@ -60,6 +60,7 @@ export function componentSummaries() {
     componentRef,
     name: d.name,
     description: d.description,
+    ai: d.ai,
     category: d.category,
     internal: !!d.internal,
     props: Object.keys(d.defaults),

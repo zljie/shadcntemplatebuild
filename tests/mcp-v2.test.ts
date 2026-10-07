@@ -5,6 +5,7 @@ import { mkdtemp, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createDocument } from "../src/core/document";
+import { buildSystemPrompt } from "../src/ai/page-agent";
 import { makeNode } from "../src/core/registry";
 
 let dir = "";
@@ -59,6 +60,27 @@ it("serves the tool surface over Streamable HTTP without the local-only export t
     expect(
       (await call("get_component", { componentRef: "shadcn.badge" })).component,
     ).toMatchObject({ componentRef: "shadcn.badge" });
+    const promptComponents = JSON.parse(
+      buildSystemPrompt()
+        .split("\n")
+        .find((line) => line.startsWith('[{"componentRef":'))!,
+    );
+    const full = (await call("list_components", { detail: "full" }))
+      .components as { componentRef: string; ai?: unknown }[];
+    for (const component of full.filter((c) => c.ai)) {
+      const chat = promptComponents.find(
+        (c: { componentRef: string }) =>
+          c.componentRef === component.componentRef,
+      );
+      expect(chat.ai).toEqual(component.ai);
+      expect(
+        summary.find((c) => c.componentRef === component.componentRef),
+      ).toMatchObject({ ai: component.ai });
+      expect(
+        (await call("get_component", { componentRef: component.componentRef }))
+          .component,
+      ).toMatchObject({ ai: component.ai });
+    }
     expect(
       (await call("get_component", { componentRef: "nope" })).isError,
     ).toBe(true);
@@ -140,7 +162,7 @@ it("edits with apply_commands, round-trips templates and returns code inline", a
     const page = await call("generate_page_code", { document: edited });
     const code = (page.files as Record<string, string>)["page.tsx"];
     expect(code).toContain("<TabsBlock");
-    expect(code).toMatch(/<TabsSlot name={"tab-1"}>\s*<BadgeBlock/);
+    expect(code).toMatch(/"tab-1":\s*\(\s*<>\s*<BadgeBlock/);
     expect((page.registry as { runtimeItem: string }).runtimeItem).toBe(
       "http://local.test/r/shadcnplane-runtime.json",
     );

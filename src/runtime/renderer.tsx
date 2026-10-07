@@ -8,13 +8,12 @@ export function PageRenderer({document,frame,slot,editing=false,adapter,navigati
     const definition=registry[node.componentRef];
     const Component=definition&&(components as unknown as Record<string,ComponentType<Record<string,unknown>>>)[definition.exportName];
     if(!Component)return <div key={node.id} role="alert">缺少组件：{node.componentRef}。节点数据已保留。</div>;
-    const children=Object.entries(node.slots).sort(([a],[b])=>a.localeCompare(b)).map(([name,nodes])=>{
-      const content=slot?slot(node,name,nodes.map(render)):nodes.map(render);
-      if(node.componentRef==="shadcn.tabs")return <components.TabsSlot key={name} name={name}>{content}</components.TabsSlot>;
-      return node.componentRef==="layout.stack"&&Object.keys(node.slots).length>1?<components.StackSlot key={name} name={name} width={(node.props.slotWidths as Record<string,"fill"|"auto">|undefined)?.[name]}>{content}</components.StackSlot>:content;
-    });
+    const slots=Object.fromEntries(Object.entries(node.slots).sort(([a],[b])=>a.localeCompare(b)).map(([name,nodes])=>{
+      const children=nodes.map(render);
+      return [name,slot?slot(node,name,children):children];
+    }));
     const extra=node.componentRef==="composite.context-panel"||node.componentRef==="shadcn.tabs"?{editing}:node.componentRef==="composite.data-table"?{openDetails:node.actions.some(a=>a.capabilityRef==="context.open")}:{};
-    const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra}>{children}</Component>;
+    const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra} slots={slots}/>;
     return frame?frame(node,element):element;
   }
   return <components.RuntimeProvider key={JSON.stringify(document.listDetail)} listDetail={document.listDetail} pageTitle={document.name} adapter={adapter} navigation={navigation}><components.ContextualShell workspaceName={document.shell.workspaceName}>{document.root.map(render)}</components.ContextualShell></components.RuntimeProvider>;
