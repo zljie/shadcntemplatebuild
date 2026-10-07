@@ -17,12 +17,12 @@ export default async function ProjectsPage() {
     if (!document) return [];
     return [{
       key: `page:${page.id}`, origin: "database", name: page.name, description: `${typeName.get(page.objectType) ?? page.objectType} 数据模型 · ${document.listDetail?.fields.length ?? 0} 个字段`,
-      updatedAt: page.updatedAt, document, openHref: `/?page=${encodeURIComponent(page.id)}`, runHref: pageRoute(page.objectType, "list-detail"), tags: [typeName.get(page.objectType) ?? page.objectType],
+      updatedAt: page.updatedAt, document, openHref: `/editor?page=${encodeURIComponent(page.id)}`, runHref: pageRoute(page.objectType, "list-detail"), tags: [typeName.get(page.objectType) ?? page.objectType],
     }];
   });
   const templates = (await Promise.all((await listTemplates()).map((meta) => getTemplate(meta.id)))).flatMap((t): DesignItem[] => t ? [{
     key: `template:${t.id}`, origin: "template", name: t.name, description: t.description, updatedAt: t.updatedAt, document: t.document,
-    openHref: `/?template=${encodeURIComponent(t.id)}`, tags: t.tags,
+    openHref: `/editor?template=${encodeURIComponent(t.id)}`, tags: t.tags,
   }] : []);
   const layouts: LayoutUsage = Object.fromEntries((["list-detail", "detail", "form"] as const).map((kind) => [kind, pages.filter((p) => p.kind === kind).map((p) => {
     const sample = types.find((t) => t.type.apiName === p.objectType)?.sampleId;
