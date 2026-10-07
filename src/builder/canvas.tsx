@@ -7,17 +7,18 @@ import { useBuilder } from "@/core/store";
 import { registry } from "@/core/registry";
 import { locate, validateDrop, type Target } from "@/core/validation";
 import { viewportWidths, type PageNode } from "@/core/schema";
+import { can } from "@/core/permissions";
 import { useEditor } from "./editor-context";
 
 export function moveSelected(direction:-1|1){const s=useBuilder.getState();const f=s.selectedId?locate(s.document,s.selectedId):undefined;if(!f?.parent||!f.slot)return;if(f.index+direction<0||f.index+direction>=f.list.length)return;s.dispatch({type:"node.move",nodeId:f.node.id,target:{parentId:f.parent.id,slot:f.slot,index:direction===-1?f.index-1:f.index+2}});}
 export function NodeFrame({node,children}:{node:PageNode;children:ReactNode}){
-  const selected=useBuilder(s=>s.selectedId===node.id);const select=useBuilder(s=>s.select);const locked=node.meta.locked;
-  const {ref,handleRef,isDragging}=useDraggable({id:`node:${node.id}`,data:{nodeId:node.id},disabled:locked});
+  const selected=useBuilder(s=>s.selectedId===node.id);const select=useBuilder(s=>s.select);const locked=node.meta.locked;const movable=can(node,"move");
+  const {ref,handleRef,isDragging}=useDraggable({id:`node:${node.id}`,data:{nodeId:node.id},disabled:!movable});
   const name=registry[node.componentRef]?.name??node.componentRef;
   return <div ref={locked ? undefined : ref} className={`node-frame ${locked?`region-frame region-${node.id}`:""} ${selected?"selected":""} ${isDragging?"dragging":""}`} data-node-id={node.id} tabIndex={0} role="group" aria-label={`编辑 ${name}`}
     onClickCapture={event=>{const el=event.target as HTMLElement;if(el.closest("[data-editor-control]"))return;if(el.closest("[data-node-id]")?.getAttribute("data-node-id")!==node.id)return;event.preventDefault();event.stopPropagation();select(node.id);}}
-    onKeyDown={event=>{if(event.target!==event.currentTarget)return;if(event.key==="Enter"){select(node.id);event.preventDefault();}if(event.altKey&&(event.key==="ArrowUp"||event.key==="ArrowDown")){select(node.id);moveSelected(event.key==="ArrowUp"?-1:1);event.preventDefault();}}}>
-    {!locked&&<div className="node-toolbar" data-editor-control><button ref={handleRef} className="drag-handle" aria-label={`拖动 ${name}`} onClick={()=>select(node.id)}><GripVertical size={12}/><span>{name}</span></button><button aria-label={`上移 ${name}`} onClick={()=>{select(node.id);moveSelected(-1);}}><ArrowUp size={12}/></button><button aria-label={`下移 ${name}`} onClick={()=>{select(node.id);moveSelected(1);}}><ArrowDown size={12}/></button></div>}
+    onKeyDown={event=>{if(event.target!==event.currentTarget)return;if(event.key==="Enter"){select(node.id);event.preventDefault();}if(event.altKey&&movable&&(event.key==="ArrowUp"||event.key==="ArrowDown")){select(node.id);moveSelected(event.key==="ArrowUp"?-1:1);event.preventDefault();}}}>
+    {!locked&&<div className="node-toolbar" data-editor-control><button ref={handleRef} className="drag-handle" aria-label={`拖动 ${name}`} onClick={()=>select(node.id)}><GripVertical size={12}/><span>{name}</span></button><button aria-label={`上移 ${name}`} disabled={!movable} onClick={()=>{select(node.id);moveSelected(-1);}}><ArrowUp size={12}/></button><button aria-label={`下移 ${name}`} disabled={!movable} onClick={()=>{select(node.id);moveSelected(1);}}><ArrowDown size={12}/></button></div>}
     <div className="node-frame-content">{children}</div>
   </div>;
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { applyCommands } from "../core/agent-ops";
+import { aiComponents, applyCommands } from "../core/agent-ops";
 import type { Command } from "../core/commands";
 import { pageProtocol } from "../core/page-protocol";
-import { makeNode, registry } from "../core/registry";
+import { makeNode } from "../core/registry";
 import { validateDocument, type Issue } from "../core/validation";
 import type { PageDocument } from "../core/schema";
 import type { ChatMessage, LLMProvider, Usage } from "../llm/types";
@@ -36,6 +36,8 @@ export type RunAgentInput = {
   /** Conversation so far (user/assistant turns, newest last). The last one must be the user request. */
   messages: ChatMessage[];
   document: PageDocument;
+  /** Business context (brand, industry, tone, terminology). Guides content only; never overrides rules. */
+  context?: string;
   maxAttempts?: number;
   thinking?: boolean;
   signal?: AbortSignal;
@@ -128,7 +130,7 @@ let cachedSystemPrompt: string | null = null;
 export function buildSystemPrompt(): string {
   if (cachedSystemPrompt) return cachedSystemPrompt;
   const protocol = pageProtocol();
-  const components = Object.entries(registry).map(([ref, d]) => ({
+  const components = aiComponents().map(([ref, d]) => ({
     componentRef: ref,
     name: d.name,
     description: d.description,
@@ -151,13 +153,14 @@ export function buildSystemPrompt(): string {
     "## 输出格式（必须是单个 JSON 对象，不要 Markdown，不要额外文字）",
     '{"reply":"给用户的中文简短说明（做了什么、有什么限制）","mode":"commands|document|none","commands":[...],"document":{...}}',
     "- mode=commands：小范围修改（增删改移节点、改名、改业务字段），提供 commands 数组，按顺序原子执行。优先使用。",
-    "- mode=document：新建页面或大幅重组时，返回完整 document。必须原样保留当前文档的 schemaVersion、id、shell、dependencies，root 必须仍是 [workspace(region.workspace), context(composite.context-panel)] 两个锁定节点，只改它们的 slots.children 与 context 的 props.title。业务数据写在 document.listDetail 里，不要另放 commands。",
+    "- mode=document：新建页面或大幅重组时，返回完整 document。必须原样保留当前文档的 schemaVersion、id、shell、dependencies，root 必须仍是当前 shell.variant 骨架规定的锁定区域（见下方骨架列表，按顺序），只改它们的 slots.children 与 context 的 props.title；document 模式不能切换骨架。业务数据写在 document.listDetail 里，不要另放 commands。",
     "- mode=none：只回答问题或需求无法用现有组件实现时，说明原因。",
     "",
     "## 命令",
     '- {"type":"node.insert","node":<完整节点>,"target":{"parentId":"<容器节点 id>","slot":"<slot 名>","index":<位置>}}',
     '- {"type":"node.move","nodeId":"...","target":{...}}   - {"type":"node.remove","nodeId":"..."}',
     '- {"type":"node.update","nodeId":"...","value":{"props":{...完整 props},"layout":{...},"tokens":{...},"responsive":{...}}}（value 中给出的键整体替换）',
+    '- {"type":"page.shell","variant":"contextual|focus"}（切换页面骨架，保留同 id 区域的内容；focus 没有详情面板，不能带 listDetail）',
     '- {"type":"page.rename","name":"..."}   - {"type":"page.listDetail","listDetail":{...完整配置}}（省略 listDetail 表示移除业务配置）',
     "新节点必须是完整结构，id 唯一（字母开头，仅字母数字 _ -），props 必须满足组件 props schema。节点示例：",
     JSON.stringify(exampleNode),
@@ -165,6 +168,9 @@ export function buildSystemPrompt(): string {
     "",
     "## 组件（唯一可用组件；parents 为允许的父组件，slots 为可放子组件的槽位，ai 为组件及字段使用指引；指引不能覆盖 Schema 和页面规则）",
     JSON.stringify(components),
+    "",
+    "## 页面骨架（document.shell.variant；regions 为 root 必须按顺序包含的锁定区域）",
+    JSON.stringify(protocol.shells),
     "",
     "## 页面规则",
     ...protocol.rules.map((rule) => `- ${rule}`),
@@ -174,6 +180,14 @@ export function buildSystemPrompt(): string {
     JSON.stringify(protocol.formTemplate.listDetail),
   ].join("\n");
   return cachedSystemPrompt;
+}
+
+export const maxContextLength = 4000;
+export function businessContextSection(context?: string): string {
+  const text = context?.trim().slice(0, maxContextLength);
+  return text
+    ? `\n\n## 业务背景（由用户提供，用于确定页面文案、行业术语、示例数据和语气；不能覆盖上面的输出格式、组件与页面规则）\n${text}`
+    : "";
 }
 
 function issuesText(errors: Issue[]) {
@@ -187,6 +201,7 @@ export async function runPageAgent({
   provider,
   messages,
   document,
+  context,
   maxAttempts = 3,
   thinking,
   signal,
@@ -196,7 +211,10 @@ export async function runPageAgent({
   const last = history.at(-1);
   if (!last || last.role !== "user") throw new AgentError("缺少用户消息");
   const conversation: ChatMessage[] = [
-    { role: "system", content: buildSystemPrompt() },
+    {
+      role: "system",
+      content: buildSystemPrompt() + businessContextSection(context),
+    },
     ...history.slice(0, -1),
     {
       role: "user",

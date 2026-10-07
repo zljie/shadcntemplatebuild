@@ -3,8 +3,9 @@ import path from "node:path";
 import { z } from "zod";
 import { commandSchema, execute, type Command } from "./commands";
 import { componentSources, registry } from "./registry";
-import { validateDocument, type Issue } from "./validation";
-import type { PageDocument } from "./schema";
+import { validateDocument, walk, type Issue } from "./validation";
+import { upgradeDocument } from "./migrations";
+import type { PageDocument, PageNode } from "./schema";
 
 /**
  * Server-side operations shared by the MCP server and the in-editor LLM chat.
@@ -18,9 +19,10 @@ export type ApplyResult =
 
 /** Apply a list of commands atomically (as one batch). Returns the new document or path/message errors. */
 export function applyCommands(
-  document: unknown,
+  input: unknown,
   commands: unknown,
 ): ApplyResult {
+  const document = upgradeDocument(input);
   const documentIssues = validateDocument(document);
   if (documentIssues.length)
     return {
@@ -49,14 +51,46 @@ export function applyCommands(
     baseRevision: 0,
     command,
   });
-  return result.success
-    ? { ok: true, document: result.document, inverse: result.inverseCommand }
-    : { ok: false, errors: result.errors };
+  if (!result.success) return { ok: false, errors: result.errors };
+  const policy = agentPolicyIssues(doc, result.document);
+  if (policy.length) return { ok: false, errors: policy };
+  return { ok: true, document: result.document, inverse: result.inverseCommand };
+}
+
+/** Components an AI may use: every registered component not marked ai.exclude. */
+export const aiComponents = () =>
+  Object.entries(registry).filter(([, d]) => !d.ai?.exclude);
+
+/**
+ * Rules that only bind AI edits (chat agent and MCP), on top of the shared command engine:
+ * ai.exclude components cannot be added, ai.excludeFields props cannot change, and node
+ * permissions (meta.permissions) are a human decision.
+ */
+export function agentPolicyIssues(before: PageDocument, after: PageDocument): Issue[] {
+  const previous = new Map<string, PageNode>();
+  walk(before.root, (node) => previous.set(node.id, node));
+  const issues: Issue[] = [];
+  const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  walk(after.root, (node) => {
+    const d = registry[node.componentRef];
+    if (!d) return;
+    const existing = previous.get(node.id);
+    const kept = existing?.componentRef === node.componentRef ? existing : undefined;
+    const path = `node.${node.id}`;
+    if (d.ai?.exclude && !kept)
+      issues.push({ path, message: `${d.name} 不对 AI 开放，请改用其他组件` });
+    for (const key of d.ai?.excludeFields ?? [])
+      if (!same(node.props[key], kept ? kept.props[key] : d.defaults[key]))
+        issues.push({ path: `${path}.props.${key}`, message: `${d.name} 的 ${key} 不允许由 AI 修改，请保持原值` });
+    if (!same(node.meta.permissions, kept?.meta.permissions))
+      issues.push({ path: `${path}.meta.permissions`, message: "节点权限只能由人在编辑器中设置" });
+  });
+  return issues;
 }
 
 /** Compact, token-cheap catalogue: enough for an AI to choose components; full detail via describeComponent. */
 export function componentSummaries() {
-  return Object.entries(registry).map(([componentRef, d]) => ({
+  return aiComponents().map(([componentRef, d]) => ({
     componentRef,
     name: d.name,
     description: d.description,

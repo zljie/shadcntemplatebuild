@@ -50,6 +50,7 @@
 .ai-composer{border-top:1px solid var(--line);padding:10px 12px 12px}
 .ai-composer textarea{width:100%;resize:none;border:1px solid #dfe3e8;border-radius:8px;padding:8px 10px;font:inherit;font-size:12.5px;line-height:1.6}
 .ai-composer textarea:focus{outline:2px solid #b9dcc8;border-color:#1f7a4d}
+.ai-context{margin-bottom:8px;font-size:11px;color:#6b7380}.ai-context summary{cursor:pointer;user-select:none;padding:2px 0}.ai-context textarea{margin-top:6px}
 .ai-composer-bar{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 .ai-thinking{display:flex;gap:5px;align-items:center;font-size:11px;color:#6b7380}
 .ai-send{display:inline-flex;gap:5px;align-items:center;border:0;background:#1f7a4d;color:#fff;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600}
@@ -60,3 +61,7 @@
 .header-actions a{font-weight:400}
 
 .business-field{min-width:0;margin:12px 0;padding:10px;border:1px solid var(--line);border-radius:6px}.business-field legend{font-size:12px;padding:0 4px}.business-field-actions{display:flex;flex-wrap:wrap;gap:6px}.business-fields button{border:1px solid var(--line);background:white;border-radius:4px;padding:6px;font-size:11px}.business-fields button:disabled{opacity:.4}.business-field-error{color:#a13c3c;font-size:11px;overflow-wrap:anywhere;line-height:1.6}
+
+.inspector-fieldset{border:0;margin:0;padding:0;min-width:0}.inspector-fieldset:disabled{opacity:.55}
+.permission-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.shell-tag select{border:0;background:transparent;font:inherit;color:inherit;padding:0 2px;cursor:pointer}

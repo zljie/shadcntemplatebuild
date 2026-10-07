@@ -1,5 +1,7 @@
 import { pageSchema, type PageDocument, type PageNode } from "./schema";
 import { registry, slotDefinition } from "./registry";
+import { permissionError } from "./permissions";
+import { shells } from "./shells";
 import { validateBusinessConfig } from "../runtime/records";
 export type Issue = {path:string;message:string};
 export function walk(nodes: PageNode[], visit: (node: PageNode, parent?: PageNode, slot?: string) => void, parent?: PageNode, slot?: string) {
@@ -23,7 +25,9 @@ export function validateDocument(input: unknown): Issue[] {
   const parsed=pageSchema.safeParse(input);
   if(!parsed.success)return parsed.error.issues.map(e=>({path:e.path.join("."),message:e.message}));
   const document=parsed.data;const errors:Issue[]=[];const ids=new Set<string>();let nodes=0;
-  if(document.root[0].componentRef!=="region.workspace" || document.root[0].id!=="workspace" || document.root[1].componentRef!=="composite.context-panel" || document.root[1].id!=="context")errors.push({path:"root",message:"必须保留工作区和详情区及其顺序"});
+  const shell=shells[document.shell.variant];
+  if(document.root.length!==shell.regions.length||shell.regions.some((region,i)=>document.root[i].componentRef!==region.componentRef||document.root[i].id!==region.id))errors.push({path:"root",message:`${shell.name} 必须按顺序保留区域：${shell.regions.map(r=>r.id).join("、")}`});
+  if(document.listDetail&&!shell.supportsListDetail)errors.push({path:"listDetail",message:`${shell.name} 没有详情面板，不支持列表／详情业务配置；请先切换到 ${shells.contextual.name}`});
   function inspect(node:PageNode,parent?:PageNode,depth=0) {
     nodes++;const path=`node.${node.id}`;
     if(depth>10)errors.push({path,message:"最多支持 10 层嵌套"});
@@ -73,6 +77,7 @@ export function validateDrop(document:PageDocument, source:PageNode, target:Targ
   if(!slot||!list)return "目标 Slot 不存在";
   if(!Number.isInteger(target.index)||target.index<0||target.index>list.length)return "插入位置无效";
   if(source.meta.locked)return "锁定的 Shell 区域不能移动";
+  if(moving){const denied=permissionError(source,"move");if(denied)return denied;}
   if(!slot.accepts.includes(source.componentRef)||!registry[source.componentRef]?.parents.includes(parent.componentRef))return `${registry[source.componentRef]?.name??source.componentRef} 不能放入${registry[parent.componentRef]?.name}的${slot.label}`;
   if(moving){let cycle=false;walk([source],node=>{if(node.id===parent.id)cycle=true;});if(cycle)return "不能将组件移入自身或后代";}
   const alreadyHere=moving&&list.some(n=>n.id===source.id);

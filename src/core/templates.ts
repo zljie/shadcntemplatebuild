@@ -9,6 +9,7 @@ import {
 import path from "node:path";
 import { z } from "zod";
 import { validateDocument, type Issue } from "./validation";
+import { upgradeDocument } from "./migrations";
 import type { PageDocument } from "./schema";
 
 /**
@@ -49,7 +50,8 @@ function fileFor(id: string): string {
 
 async function readTemplateFile(file: string): Promise<Template | null> {
   try {
-    const value = JSON.parse(await readFile(file, "utf8")) as Template;
+    const raw = JSON.parse(await readFile(file, "utf8")) as Template;
+    const value = { ...raw, document: upgradeDocument(raw?.document) as PageDocument };
     const meta = templateMetaSchema.safeParse(value);
     if (!meta.success || validateDocument(value.document).length) return null;
     return { ...value, ...meta.data };
@@ -99,13 +101,14 @@ export async function saveTemplate(
         message: e.message,
       })),
     };
-  const errors = validateDocument(input.document);
+  const document = upgradeDocument(input.document);
+  const errors = validateDocument(document);
   if (errors.length) return { ok: false, errors };
   const template: Template = {
     ...meta.data,
     source: input.source ?? "builder",
     updatedAt: new Date().toISOString(),
-    document: input.document as PageDocument,
+    document: document as PageDocument,
   };
   await mkdir(templatesDir(), { recursive: true });
   const file = fileFor(template.id);

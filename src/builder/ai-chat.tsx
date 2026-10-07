@@ -17,6 +17,8 @@ import {
 import { useBuilder } from "@/core/store";
 import type { Command } from "@/core/commands";
 
+const contextKey = "shadcnplane.ai.businessContext";
+
 type ProviderStatus = {
   provider: string;
   label: string;
@@ -62,6 +64,22 @@ export function AiChatPanel({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [thinking, setThinking] = useState(false);
+  // The panel mounts on demand in the browser, so reading storage during init is safe.
+  const [context, setContext] = useState(() => {
+    try {
+      return localStorage.getItem(contextKey) ?? "";
+    } catch {
+      return "";
+    }
+  });
+  function updateContext(value: string) {
+    setContext(value);
+    try {
+      localStorage.setItem(contextKey, value);
+    } catch {
+      /* storage unavailable */
+    }
+  }
   const abort = useRef<AbortController | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -127,6 +145,7 @@ export function AiChatPanel({
           messages: history,
           document: store.document,
           thinking,
+          ...(context.trim() ? { context: context.trim() } : {}),
         }),
         signal: controller.signal,
       });
@@ -403,6 +422,20 @@ export function AiChatPanel({
         </button>
       )}
       <div className="ai-composer">
+        <details className="ai-context">
+          <summary>
+            业务背景{context.trim() ? "（已设置）" : "（可选）"}
+          </summary>
+          <textarea
+            value={context}
+            rows={3}
+            maxLength={4000}
+            placeholder="品牌、行业、目标用户、语气和术语，例如：我们是面向连锁药店的进销存 SaaS，文案简洁专业。"
+            aria-label="业务背景"
+            onChange={(e) => updateContext(e.target.value)}
+            disabled={busy}
+          />
+        </details>
         <textarea
           value={input}
           rows={3}

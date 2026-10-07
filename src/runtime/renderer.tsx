@@ -2,8 +2,10 @@
 import { type ComponentType, type ReactNode } from "react";
 import { type PageDocument, type PageNode } from "@/core/schema";
 import { registry } from "@/core/registry";
+import { hasDetailsRegion } from "@/core/shells";
 import * as components from "./components";
 export function PageRenderer({document,frame,slot,editing=false,adapter,navigation}:{document:PageDocument;frame?:(node:PageNode,children:ReactNode)=>ReactNode;slot?:(node:PageNode,name:string,children:ReactNode[])=>ReactNode;editing?:boolean;adapter?:components.RecordAdapter;navigation?:components.Navigation}){
+  const details=hasDetailsRegion(document.root);
   function render(node:PageNode):ReactNode {
     const definition=registry[node.componentRef];
     const Component=definition&&(components as unknown as Record<string,ComponentType<Record<string,unknown>>>)[definition.exportName];
@@ -12,7 +14,7 @@ export function PageRenderer({document,frame,slot,editing=false,adapter,navigati
       const children=nodes.map(render);
       return [name,slot?slot(node,name,children):children];
     }));
-    const extra=node.componentRef==="composite.context-panel"||node.componentRef==="shadcn.tabs"?{editing}:node.componentRef==="composite.data-table"?{openDetails:node.actions.some(a=>a.capabilityRef==="context.open")}:{};
+    const extra=node.componentRef==="composite.context-panel"||node.componentRef==="shadcn.tabs"?{editing}:node.componentRef==="composite.data-table"?{openDetails:details&&node.actions.some(a=>a.capabilityRef==="context.open")}:{};
     const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra} slots={slots}/>;
     return frame?frame(node,element):element;
   }

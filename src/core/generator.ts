@@ -2,6 +2,7 @@ import { format } from "prettier";
 import { registry } from "./registry";
 import type { PageDocument, PageNode } from "./schema";
 import { validateDocument, walk } from "./validation";
+import { hasDetailsRegion } from "./shells";
 export function stableStringify(value:unknown):string {
   if(Array.isArray(value))return `[${value.map(stableStringify).join(",")}]`;
   if(value!==null&&typeof value==="object")return `{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([k,v])=>`${JSON.stringify(k)}:${stableStringify(v)}`).join(",")}}`;
@@ -18,7 +19,7 @@ export async function generateReact(document:PageDocument):Promise<string>{
     if(Object.keys(node.layout).length)props.layout=node.layout;
     if(Object.keys(node.tokens).length)props.tokens=node.tokens;
     if(Object.keys(node.responsive).length)props.responsive=node.responsive;
-    if(node.componentRef==="composite.data-table")props.openDetails=node.actions.some(a=>a.capabilityRef==="context.open");
+    if(node.componentRef==="composite.data-table")props.openDetails=hasDetailsRegion(document.root)&&node.actions.some(a=>a.capabilityRef==="context.open");
     const attributes=Object.entries(props).sort(([a],[b])=>a<b?-1:1).map(([k,v])=>`${k}={${stableStringify(v)}}`).join(" ");
     const slots=Object.entries(node.slots).sort(([a],[b])=>a.localeCompare(b)).map(([name,nodes])=>`${JSON.stringify(name)}:<>${nodes.map(emit).join("\n")}</>`).join(",\n");
     return `<${name} ${attributes}${slots?` slots={{${slots}}}`:""}/>`;

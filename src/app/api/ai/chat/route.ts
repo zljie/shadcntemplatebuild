@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { runPageAgent, AgentError, type AgentEvent } from "@/ai/page-agent";
+import { runPageAgent, AgentError, maxContextLength, type AgentEvent } from "@/ai/page-agent";
 import { getProvider, providerStatus } from "@/llm/registry";
 import { LLMError } from "@/llm/types";
 import { validateDocument } from "@/core/validation";
+import { upgradeDocument } from "@/core/migrations";
 import { sameOrigin } from "@/core/http";
 import type { PageDocument } from "@/core/schema";
 
@@ -25,6 +26,7 @@ const bodySchema = z
       .max(40),
     document: z.unknown(),
     thinking: z.boolean().optional(),
+    context: z.string().max(maxContextLength).optional(),
   })
   .strict();
 
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  body.document = upgradeDocument(body.document);
   const documentErrors = validateDocument(body.document);
   if (documentErrors.length)
     return NextResponse.json(
@@ -99,6 +102,7 @@ export async function POST(request: Request) {
           provider,
           messages: body.messages,
           document: body.document as PageDocument,
+          context: body.context?.trim() || process.env.AI_BUSINESS_CONTEXT,
           thinking: body.thinking ?? process.env.LLM_THINKING === "true",
           signal: request.signal,
           onEvent,

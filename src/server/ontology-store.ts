@@ -4,6 +4,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { getDatabase, transaction } from "./db";
 import { templatesDir } from "../core/templates";
 import { validateDocument } from "../core/validation";
+import { upgradeDocument } from "../core/migrations";
 import type { PageDocument } from "../core/schema";
 import { resourceListDetail, type DataRecord, type ListDetail } from "../runtime/data";
 import { applyRecordRequest, type RecordResult } from "../runtime/records";
@@ -155,7 +156,7 @@ export function listPages(): PageRecord[] {
 }
 export function getPage(id: string): (PageRecord & {document: PageDocument | null}) | null {
   const row = db().prepare("select * from pages where id = ?").get(id) as PageRow | undefined;
-  return row ? {...toPage(row), document: row.document ? parse<PageDocument>(row.document) : null} : null;
+  return row ? {...toPage(row), document: row.document ? upgradeDocument(parse<unknown>(row.document)) as PageDocument : null} : null;
 }
 /** Generates (or regenerates) the page set for a type. Composer edits to list-detail are kept unless overwrite. */
 export function generatePages(apiName: string, kinds: readonly PageKind[] = pageKinds, {overwrite = false, source = "ontology"} = {}): Result<PageRecord[]> {
@@ -179,7 +180,8 @@ export function generatePages(apiName: string, kinds: readonly PageKind[] = page
   }
   return {ok: true, value: listPages().filter(p => p.objectType === apiName)};
 }
-export function savePageDocument(id: string, document: unknown): Result<PageRecord> {
+export function savePageDocument(id: string, input: unknown): Result<PageRecord> {
+  const document = upgradeDocument(input);
   const page = getPage(id);
   if (!page) return {ok: false, errors: [{path: "id", message: "页面不存在"}]};
   if (page.kind !== "list-detail") return {ok: false, errors: [{path: "kind", message: "只有列表 + 详情页面使用 Page DSL"}]};

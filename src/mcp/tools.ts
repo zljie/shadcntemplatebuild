@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { componentCapabilities, pageProtocol } from "../core/page-protocol";
 import { validateDocument } from "../core/validation";
+import { upgradeDocument } from "../core/migrations";
 import { exportProject } from "../core/export-project";
 import {
   applyCommands,
@@ -105,7 +106,11 @@ export function createPageServer({
       inputSchema: z.object({}).strict(),
       annotations: readOnly,
     },
-    async () => result(pageProtocol()),
+    async () =>
+      result({
+        ...pageProtocol(),
+        businessContext: process.env.AI_BUSINESS_CONTEXT?.trim() || null,
+      }),
   );
 
   // ── Templates (shared with the drag-and-drop builder) ──────────────────────
@@ -202,7 +207,8 @@ export function createPageServer({
       inputSchema: documentInput,
       annotations: readOnly,
     },
-    async ({ document }) => {
+    async ({ document: input }) => {
+      const document = upgradeDocument(input);
       const errors = validateDocument(document);
       return result({ valid: errors.length === 0, errors }, errors.length > 0);
     },
@@ -212,7 +218,7 @@ export function createPageServer({
     "apply_commands",
     {
       description:
-        "Incrementally edit a page DSL with editor commands, applied atomically and validated. Commands: node.insert {node,target:{parentId,slot,index}}, node.move {nodeId,target}, node.remove {nodeId}, node.update {nodeId,value:{props?,layout?,tokens?,responsive?,slots?}}, page.rename {name}. New nodes need the full node shape (id, componentRef, componentVersion '0.1.0', props, layout, tokens, responsive, slots, actions, meta.locked=false); use get_component for defaults. Returns the new document or errors (document unchanged).",
+        "Incrementally edit a page DSL with editor commands, applied atomically and validated. Commands: node.insert {node,target:{parentId,slot,index}}, node.move {nodeId,target}, node.remove {nodeId}, node.update {nodeId,value:{props?,layout?,tokens?,responsive?,slots?}}, page.rename {name}, page.listDetail {listDetail?}, page.shell {variant} (switch skeleton, see get_page_protocol shells). Nodes with meta.permissions false block that operation; AI clients cannot change meta.permissions or add ai.exclude components. New nodes need the full node shape (id, componentRef, componentVersion '0.1.0', props, layout, tokens, responsive, slots, actions, meta.locked=false); use get_component for defaults. Returns the new document or errors (document unchanged).",
       inputSchema: z
         .object({
           document: z.unknown(),
@@ -243,7 +249,8 @@ export function createPageServer({
         .strict(),
       annotations: readOnly,
     },
-    async ({ document, scope }) => {
+    async ({ document: input, scope }) => {
+      const document = upgradeDocument(input);
       const errors = validateDocument(document);
       if (errors.length) return result({ valid: false, errors }, true);
       const files = await exportProject(document as PageDocument);
@@ -288,7 +295,8 @@ export function createPageServer({
           openWorldHint: false,
         },
       },
-      async ({ document }) => {
+      async ({ document: input }) => {
+        const document = upgradeDocument(input);
         const errors = validateDocument(document);
         if (errors.length) return result({ valid: false, errors }, true);
         const files = await exportProject(document as PageDocument);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { spacing, type PageNode } from "./schema";
+import { spacing, type PageNode, type Permissions } from "./schema";
 import { tokenOptions } from "../runtime/tokens";
 
 export type Field = {key: string; label: string; type: "text" | "textarea" | "select"; options?: string[]};
@@ -74,7 +74,16 @@ export type Definition = ComponentSource & {
   schema: z.ZodType; fields: Field[]; defaults: Record<string, unknown>;
   slots: Record<string, {label: string; accepts: string[]; max: number}>;
   parents: string[]; internal?: boolean;
-  ai?: {instructions: string; fields?: Record<string, string>};
+  /** Component-level permission defaults (layer 2 of 3, see core/permissions.ts). */
+  permissions?: Permissions;
+  /** Dynamic inspector fields: derive the visible field list from current props (defaults to `fields`). */
+  resolveFields?: (props: Record<string, unknown>) => Field[];
+  /**
+   * AI generation hints (chat agent + MCP). instructions/fields guide the model; exclude hides the
+   * component from AI catalogues and rejects AI-inserted instances; excludeFields keeps those props at
+   * their current value (or default for new nodes) under AI edits. Hints never override Schema rules.
+   */
+  ai?: {instructions?: string; fields?: Record<string, string>; exclude?: boolean; excludeFields?: string[]};
 };
 const text = z.string().max(200);
 const longText = z.string().max(1000);
@@ -90,7 +99,7 @@ export const registry: Record<string, Definition> = {
   "shadcn.button": definition({ai:{"instructions":"用于示例操作提示。点击只显示 message，不支持 API 请求、导航或业务提交；新增和编辑记录由业务表单入口承担。","fields":{"text":"简短、明确的操作文案。","message":"点击后显示的示例提示，不得声称已执行真实业务操作。"}},name:"Button",description:"标准操作按钮",category:"基础",exportName:"ButtonBlock",schema:z.object({text:text.min(1),variant:z.enum(["default","outline","secondary"]),message:text.min(1)}).strict(),fields:[field("text","按钮文案"),field("variant","按钮样式","select",["default","outline","secondary"]),field("message","点击提示")],defaults:{text:"了解更多",variant:"outline",message:"这是可配置的示例操作。"},slots:{},parents}),
   "shadcn.input": definition({ai:{"instructions":"用于独立文本输入展示，不会自动绑定业务字段或搜索。搜索用 composite.search-bar，业务表单字段配置在 document.listDetail 中。","fields":{"label":"可访问的字段标签，必须非空。","placeholder":"输入提示，不替代字段标签。"}},name:"Input",description:"带标签的文本输入",category:"基础",exportName:"InputBlock",schema:z.object({label:text.min(1),placeholder:text}).strict(),fields:[field("label","字段标签"),field("placeholder","占位文案")],defaults:{label:"资源名称",placeholder:"输入资源名称"},slots:{},parents}),
   "shadcn.badge": definition({name:"Badge",description:"状态或标签徽标",category:"基础",exportName:"BadgeBlock",schema:z.object({text:text.min(1).max(40),variant:z.enum(["default","secondary","outline","destructive"])}).strict(),fields:[field("text","徽标文案"),field("variant","徽标样式","select",["default","secondary","outline","destructive"])],defaults:{text:"新",variant:"secondary"},slots:{},parents}),
-  "shadcn.tabs": definition({ai:{"instructions":"子组件放在 slots tab-1/tab-2/tab-3，最多三个页签；label 为空的页签不显示。保留全部声明槽位，不向隐藏页签添加用户需要看见的内容。","fields":{"label1":"第一个页签标题，必须非空。","label2":"第二个页签标题；空字符串隐藏此页签。","label3":"第三个页签标题；空字符串隐藏此页签。"}},name:"Tabs",description:"分页签切换的内容区（最多 3 个，标签留空即隐藏）",category:"基础",exportName:"TabsBlock",schema:z.object({label1:text.min(1).max(40),label2:text.max(40),label3:text.max(40)}).strict(),fields:[field("label1","页签 1"),field("label2","页签 2（留空隐藏）"),field("label3","页签 3（留空隐藏）")],defaults:{label1:"概览",label2:"详情",label3:""},slots:{"tab-1":tabSlot("页签 1"),"tab-2":tabSlot("页签 2"),"tab-3":tabSlot("页签 3")},parents:["region.workspace","layout.stack","shadcn.card"]}),
+  "shadcn.tabs": definition({ai:{"instructions":"子组件放在 slots tab-1/tab-2/tab-3，最多三个页签；label 为空的页签不显示。保留全部声明槽位，不向隐藏页签添加用户需要看见的内容。","fields":{"label1":"第一个页签标题，必须非空。","label2":"第二个页签标题；空字符串隐藏此页签。","label3":"第三个页签标题；空字符串隐藏此页签。"}},name:"Tabs",description:"分页签切换的内容区（最多 3 个，标签留空即隐藏）",category:"基础",exportName:"TabsBlock",schema:z.object({label1:text.min(1).max(40),label2:text.max(40),label3:text.max(40)}).strict(),fields:[field("label1","页签 1"),field("label2","页签 2（留空隐藏）"),field("label3","页签 3（留空隐藏）")],resolveFields:props=>[field("label1","页签 1"),field("label2","页签 2（留空隐藏）"),...(props.label2||props.label3?[field("label3","页签 3（留空隐藏）")]:[])],defaults:{label1:"概览",label2:"详情",label3:""},slots:{"tab-1":tabSlot("页签 1"),"tab-2":tabSlot("页签 2"),"tab-3":tabSlot("页签 3")},parents:["region.workspace","layout.stack","shadcn.card"]}),
   "pattern.page-header": definition({ai:{"instructions":"列表／详情页面只放一个页面标题组件。业务表单的新增入口由 listDetail.form.actions 中的 record.create 启用，不用独立 Button 模拟提交。","fields":{"title":"页面标题。","description":"简短说明此页面的用途。"}},name:"PageHeader",description:"页面标题与说明",category:"业务",exportName:"PageHeader",schema:z.object({title:text.min(1),description:longText}).strict(),fields:[field("title","页面标题"),field("description","页面说明","textarea")],defaults:{title:"资源中心",description:"集中管理工作空间中的技能、工具和知识。"},slots:{},parents:["region.workspace","layout.stack"]}),
   "composite.search-bar": definition({ai:{"instructions":"搜索和筛选来自 document.listDetail.searchFields 和 filters，均须引用已声明字段；不要在组件 props 中添加数据字段。"},name:"SearchBar",description:"按页面配置搜索与筛选",category:"业务",exportName:"SearchBar",schema:z.object({placeholder:text}).strict(),fields:[field("placeholder","搜索提示")],defaults:{placeholder:"搜索资源名称或描述…"},slots:{},parents}),
   "composite.data-table": definition({ai:{"instructions":"业务列表／详情页（listDetail）需要恰好一个 pattern.page-header、composite.search-bar、composite.data-table（actions 为 row.select→context.open）及 context 中的 composite.resource-details。字段、列、示例记录和表单写在 document.listDetail，不放进组件 props；改名或删除字段时同步所有引用和示例记录。不需要列表时可省略 listDetail，用 Card/Tabs/Badge/Button/Input/Stack 组合页面。","fields":{"density":"comfortable 为常规行距，compact 为紧凑行距，不影响业务数据。"}},name:"DataTable",description:"可配置的业务列表",category:"业务",exportName:"DataTable",schema:z.object({density:z.enum(["comfortable","compact"])}).strict(),fields:[field("density","行间距","select",["comfortable","compact"])],defaults:{density:"comfortable"},slots:{},parents}),

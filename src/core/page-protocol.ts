@@ -2,6 +2,7 @@ import { z } from "zod";
 import { registry } from "./registry";
 import { pageSchema } from "./schema";
 import { createDocument } from "./document";
+import { shells } from "./shells";
 import { resourceListDetail, recordActions } from "../runtime/data";
 
 const formExample = {
@@ -22,10 +23,13 @@ export function componentCapabilities() {
 export function pageProtocol() {
   return {
     schema: z.toJSONSchema(pageSchema),
+    shells: Object.entries(shells).map(([variant, s]) => ({ variant, name: s.name, description: s.description, regions: s.regions.map(r => ({ id: r.id, componentRef: r.componentRef })), supportsListDetail: s.supportsListDetail })),
     runtimeActions: recordActions.map(capabilityRef=>({capabilityRef,configuration:"listDetail.form.actions",adapter:"session example data only",entry:capabilityRef==="record.create"?"page header":"selected details",history:"separate from PageCommand; never persisted in DSL"})),
     rules: [
       "DSL is the source of truth. Use registered componentRefs and strict props only; no code, HTML, CSS or URLs.",
-      "Keep locked root workspace then context; use Registry parent and Slot limits. Shell layout and tokens cannot be overridden.",
+      "Keep the root regions required by document.shell.variant (see shells) in order; use Registry parent and Slot limits. Shell layout and tokens cannot be overridden.",
+      "Switch skeletons only with the page.shell {variant} command; regions are kept by id. listDetail requires a shell with a details region (contextual).",
+      "Nodes may carry meta.permissions {delete,move,duplicate,edit}; false blocks that operation for every editor, AI and MCP. Respect them and never add or change meta.permissions.",
       "listDetail is optional: absent means legacy resource example. With it, exactly one header, search, table and details is required; table needs row.select -> context.open.",
       "listDetail defines one shared dataset. Fields have unique keys (id, constructor, prototype and __proto__ are reserved). All field references must exist and each reference list must be unique.",
       "Every row has a unique nonempty id, exactly the declared fields and matching primitive types. Maximum 200 rows. dataSource must be example.",

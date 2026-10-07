@@ -3,6 +3,8 @@ import { createDocument } from "./document";
 import { execute, type Command, type Envelope } from "./commands";
 import { type PageDocument, type Viewport } from "./schema";
 import { validateDocument, locate, walk } from "./validation";
+import { migrateDocument } from "./migrations";
+import { can } from "./permissions";
 
 type HistoryEntry={command:Command;inverse:Command};
 export type Draft={document:PageDocument;revision:number;viewport:Viewport;savedAt:string;history:{undo:HistoryEntry[];redo:HistoryEntry[]}};
@@ -17,7 +19,7 @@ export const useBuilder=create<State>((set,get)=>({
   undoOnce(){const s=get(),entry=s.undo.at(-1);if(!entry)return;const r=execute(s.document,s.revision,envelope(s.document,s.revision,entry.inverse));if(!r.success){set({message:r.errors[0].message});return;}set({document:r.document,revision:r.revision,undo:s.undo.slice(0,-1),redo:[...s.redo,entry],dirty:true,selectedId:null,message:"已撤销"});},
   redoOnce(){const s=get(),entry=s.redo.at(-1);if(!entry)return;const r=execute(s.document,s.revision,envelope(s.document,s.revision,entry.command));if(!r.success){set({message:r.errors[0].message});return;}set({document:r.document,revision:r.revision,redo:s.redo.slice(0,-1),undo:[...s.undo,entry],dirty:true,selectedId:null,message:"已重做"});},
   select(selectedId){set({selectedId});},setViewport(viewport){set({viewport});},setMode(mode){set({mode});},notify(message){set({message});},
-  load(draft){const issues=validateDocument(draft.document);if(issues.length)throw new Error(issues.map(e=>`${e.path}: ${e.message}`).join("；"));set({...draft,...draft.history,selectedId:null,dirty:false,ready:true,loadError:false,message:"草稿已恢复"});},
+  load(input){const migrated=migrateDocument(input.document);const draft:Draft=migrated.applied.length?{...input,document:migrated.document as PageDocument,revision:0,history:{undo:[],redo:[]}}:input;const issues=validateDocument(draft.document);if(issues.length)throw new Error(issues.map(e=>`${e.path}: ${e.message}`).join("；"));set({...draft,...draft.history,selectedId:null,dirty:false,ready:true,loadError:false,message:migrated.applied.length?`已升级页面数据（${migrated.applied.join("，")}），撤销历史已清空`:"草稿已恢复"});},
   newPage(){set({document:createDocument(true),revision:0,selectedId:null,undo:[],redo:[],savedAt:null,dirty:true,loadError:false,message:"已创建空白页面"});},
-  duplicate(){const s=get();if(!s.selectedId)return;const f=locate(s.document,s.selectedId);if(!f?.parent||!f.slot||f.node.meta.locked)return;const node=structuredClone(f.node);walk([node],n=>{n.id=`n-${crypto.randomUUID()}`;});if(get().dispatch({type:"node.insert",node,target:{parentId:f.parent.id,slot:f.slot,index:f.index+1}}))set({selectedId:node.id,message:"已复制组件"});},
+  duplicate(){const s=get();if(!s.selectedId)return;const f=locate(s.document,s.selectedId);if(!f?.parent||!f.slot||!can(f.node,"duplicate"))return;const node=structuredClone(f.node);walk([node],n=>{n.id=`n-${crypto.randomUUID()}`;});if(get().dispatch({type:"node.insert",node,target:{parentId:f.parent.id,slot:f.slot,index:f.index+1}}))set({selectedId:node.id,message:"已复制组件"});},
 }));
