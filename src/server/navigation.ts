@@ -10,7 +10,7 @@ export function appNavigation(activeType?: string): {navigation: Navigation; has
     items: types.filter(t => t.pages.some(p => p.kind === "list-detail")).map(t => ({
       label: t.type.pluralDisplayName ?? t.type.displayName, href: pageRoute(t.type.apiName, "list-detail"), count: t.count, active: t.type.apiName === activeType,
     })),
-    links: [{label: "资源清单", href: "/resources"}, {label: "页面设计器", href: "/"}],
+    links: [{label: "我的项目", href: "/projects"}, {label: "资源清单", href: "/resources"}, {label: "页面设计器", href: "/"}],
     ...(active?.pages.some(p => p.kind === "detail") ? {detailHref: `/apps/${active.type.apiName}/{id}`} : {}),
   };
   return {navigation, hasDetail: !!active?.pages.some(p => p.kind === "detail"), hasForm: !!active?.pages.some(p => p.kind === "form")};

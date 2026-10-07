@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Boxes, Database, FileStack, Layers3, LayoutTemplate, Link2, PencilRuler, Plus, RefreshCw, Search, Trash2, Wand2 } from "lucide-react";
+import { ArrowUpRight, Boxes, Database, FileStack, LayoutTemplate, Link2, PencilRuler, Plus, RefreshCw, Search, Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +11,7 @@ import { baseTypeLabels, pageKindLabels, pageKinds, pageRoute, type ObjectType, 
 import type { ObjectTypeSummary, PageRecord } from "@/server/ontology-store";
 import type { TemplateMeta } from "@/core/templates";
 import { ModelEditor } from "./model-editor";
+import { TopNav } from "./top-nav";
 
 type Props = {objectTypes: ObjectTypeSummary[]; pages: PageRecord[]; templates: TemplateMeta[]; database: string};
 type Confirm = {title: string; description: string; action: () => Promise<void>; destructive?: boolean};
@@ -46,11 +47,7 @@ export function ResourceCatalog({objectTypes, pages, templates, database}: Props
   const generate = (apiName: string, kinds: PageKind[], overwrite = false) => run(() => call("/api/pages", "POST", {objectType: apiName, kinds, overwrite}), overwrite ? "页面已按当前模型重新生成" : "已生成缺失页面");
 
   return <div className="catalog-app">
-    <header className="catalog-topbar">
-      <Link className="catalog-brand" href="/"><span className="app-logo"><Layers3 size={17}/></span><strong>Composer</strong></Link>
-      <nav aria-label="主导航"><Link href="/">页面设计器</Link><Link className="active" href="/resources" aria-current="page">资源清单</Link><Link href="/apps">业务原型</Link></nav>
-      <span className="catalog-db" title="SQLite 数据库文件"><Database size={13}/>{database}</span>
-    </header>
+    <TopNav active="/resources" database={database}/>
     <main className="catalog-main">
       <section className="catalog-hero">
         <div><span className="page-eyebrow"><Boxes size={14}/> ONTOLOGY · SQLITE</span><h1>资源清单</h1>
