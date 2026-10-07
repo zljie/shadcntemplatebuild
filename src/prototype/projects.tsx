@@ -52,7 +52,7 @@ export function ProjectsHome({designs, layouts, apps, modelCount}: Props) {
         <div><span className="page-eyebrow"><PanelsTopLeft size={14}/> WORKSPACE</span><h1>我的项目</h1>
           <p>项目中的全部页面设计、应用框架（App Shell）与布局模式。点击预览进入设计器继续编辑，或直接运行由数据模型驱动的业务原型。</p></div>
         <div className="catalog-hero-actions">
-          <Button asChild><Link href="/?new=1"><FilePlus2 size={14}/>新建页面</Link></Button>
+          <Button asChild><Link href="/editor?new=1"><FilePlus2 size={14}/>新建页面</Link></Button>
           <Button asChild variant="outline"><Link href="/resources"><Boxes size={14}/>新建数据模型</Link></Button>
         </div>
       </section>
@@ -81,7 +81,7 @@ export function ProjectsHome({designs, layouts, apps, modelCount}: Props) {
                 </div>
               </div>
             </article>)}
-            <Link href="/?new=1" className="design-card design-new"><FilePlus2 size={22}/><strong>新建空白页面</strong><span>从 Contextual Shell 开始装配组件</span></Link>
+            <Link href="/editor?new=1" className="design-card design-new"><FilePlus2 size={22}/><strong>新建空白页面</strong><span>从 Contextual Shell 开始装配组件</span></Link>
           </div>
           {!visible.length && <p className="catalog-notice">没有匹配的页面</p>}
         </TabsContent>
@@ -93,7 +93,7 @@ export function ProjectsHome({designs, layouts, apps, modelCount}: Props) {
               <div className="design-title"><h2>Contextual Shell</h2><Badge variant="secondary">锁定框架 v0.1.0</Badge></div>
               <p>所有页面共享的应用框架：设计器与导出工程保持一致；Shell 结构、间距和主题由规范锁定，只有工作区内容可编辑。</p>
               <dl className="shell-anatomy">{shellAnatomy.map(([name, text]) => <div key={name}><dt>{name}</dt><dd>{text}</dd></div>)}</dl>
-              <div className="design-actions"><Button asChild size="sm" variant="outline"><Link href="/?new=1"><FilePlus2 size={13}/>基于框架新建页面</Link></Button></div>
+              <div className="design-actions"><Button asChild size="sm" variant="outline"><Link href="/editor?new=1"><FilePlus2 size={13}/>基于框架新建页面</Link></Button></div>
             </div>
           </article>
           <article className="design-card app-card">
@@ -115,7 +115,7 @@ export function ProjectsHome({designs, layouts, apps, modelCount}: Props) {
               <p>{layout.description}</p>
               <p className="layout-usage">{used.length} 个页面使用：{used.slice(0, 5).map((u, i) => <span key={u.name}>{i > 0 && "、"}{u.href ? <Link href={u.href}>{u.name}</Link> : u.name}</span>)}{used.length > 5 && " 等"}</p>
               <div className="design-actions">{layout.dsl
-                ? <Button asChild size="sm" variant="outline"><Link href="/?template=resource-center"><FilePlus2 size={13}/>从示例开始设计</Link></Button>
+                ? <Button asChild size="sm" variant="outline"><Link href="/editor?template=resource-center"><FilePlus2 size={13}/>从示例开始设计</Link></Button>
                 : <Button asChild size="sm" variant="outline"><Link href="/resources"><Boxes size={13}/>从数据模型生成</Link></Button>}</div>
             </div>
           </article>; })}

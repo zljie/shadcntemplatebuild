@@ -94,7 +94,7 @@ export function ResourceCatalog({objectTypes, pages, templates, database}: Props
               <td><span className="type-badge">{pageKindLabels[page.kind]}</span></td><td>{typeName.get(page.objectType)}</td>
               <td>{sourceLabels[page.source] ?? page.source}</td><td className="date-cell">{page.updatedAt.slice(0, 16).replace("T", " ")}</td>
               <td className="catalog-row-actions">{url && <Button asChild size="sm" variant="outline"><a href={url}>打开</a></Button>}
-                {page.kind === "list-detail" && <Button asChild size="sm" variant="outline"><a href={`/?page=${encodeURIComponent(page.id)}`}><PencilRuler size={13}/>设计器</a></Button>}
+                {page.kind === "list-detail" && <Button asChild size="sm" variant="outline"><a href={`/editor?page=${encodeURIComponent(page.id)}`}><PencilRuler size={13}/>设计器</a></Button>}
                 <Button size="sm" variant="ghost" className="danger" aria-label={`删除 ${page.name}`} disabled={busy} onClick={() => setConfirm({title: `删除页面「${page.name}」`, description: "页面会从清单和业务原型中移除；数据模型和记录保留，可随时重新生成。", destructive: true, action: () => run(() => call(`/api/pages/${page.id}`, "DELETE"), "页面已删除")})}><Trash2 size={13}/></Button></td>
             </tr>; })}</tbody></table>
             {!visiblePages.length && <Empty text="没有页面"/>}</div></div>

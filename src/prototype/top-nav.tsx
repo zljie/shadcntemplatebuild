@@ -5,7 +5,7 @@ const links = [
   {href: "/projects", label: "我的项目"},
   {href: "/resources", label: "资源清单"},
   {href: "/apps", label: "业务原型"},
-  {href: "/", label: "页面设计器"},
+  {href: "/editor", label: "页面设计器"},
 ] as const;
 
 /** Top navigation shared by the project home and the resource catalog. */
