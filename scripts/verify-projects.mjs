@@ -6,7 +6,7 @@ const origin = process.env.COMPOSER_URL ?? 'http://127.0.0.1:3100';
 const output = process.env.VERIFY_OUTPUT ?? 'test-results/projects';
 await mkdir(output, {recursive:true});
 const browser = await chromium.launch({headless:true});
-const page = await browser.newPage({viewport:{width:1440,height:1000}});
+const page = await browser.newPage({viewport:{width:1440,height:1000},timezoneId:'Asia/Shanghai'});
 page.setDefaultTimeout(20000);
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));

@@ -127,7 +127,7 @@ export function ProjectsHome({designs, layouts, apps, modelCount}: Props) {
 
 function formatTime(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("zh-CN", {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"});
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("zh-CN", {timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"});
 }
 function Stat({icon, label, value}: {icon: React.ReactNode; label: string; value: number}) {
   return <div className="catalog-stat"><span>{icon}</span><div><b>{value}</b><small>{label}</small></div></div>;
