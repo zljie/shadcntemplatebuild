@@ -9,7 +9,9 @@ import {
   Check,
   CodeXml,
   Database,
+  FileArchive,
   FileJson,
+  FlaskConical,
   Hammer,
   LayoutTemplate,
   Megaphone,
@@ -23,6 +25,8 @@ import {
   Terminal,
   Undo2,
   Users,
+  Wand2,
+  Workflow,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -32,11 +36,12 @@ import { EditorMock } from "@/components/landing/editor-mock";
 export const metadata: Metadata = {
   title: "Shadcnplane — 用 shadcn 组件装配页面",
   description:
-    "受约束的可视化页面装配器：拖拽或对话生成页面，输出结构化 DSL，一键导出可运行的 React 工程。",
+    "受约束的可视化页面装配器：导入业务模型，推演业务场景，拖拽或对话生成页面，输出结构化 DSL，一键导出可运行的 React 工程。",
 };
 
 const nav = [
   ["产品", "#features"],
+  ["业务建模", "#business"],
   ["工作原理", "#how"],
   ["AI 治理", "#ai"],
   ["对比", "#compare"],
@@ -71,8 +76,15 @@ const pillars = [
     no: "03",
     icon: CodeXml,
     title: "导出代码",
-    body: "页面导出为独立的 Next.js 工程，或者通过 shadcn registry 一条命令装进你现有的项目，源码归你所有。",
+    body: "单个页面或整套多模块应用都能导出为独立的 Next.js 工程，也可以通过 shadcn registry 装进你现有的项目，源码归你所有。",
     link: ["查看 registry", "/r/registry.json"],
+  },
+  {
+    no: "04",
+    icon: Workflow,
+    title: "业务建模",
+    body: "导入业务模型 YAML，按对象、关系、行为、规则、角色等视角管理。AI 推演业务场景，再一键生成多页面应用。",
+    link: ["进入业务建模", "/business-models"],
   },
 ] as const;
 
@@ -85,7 +97,7 @@ const steps = [
   {
     icon: MonitorSmartphone,
     title: "编辑或生成",
-    body: "团队拖拽编辑，AI 通过对话或 MCP 生成，走同一套命令。",
+    body: "团队拖拽编辑，AI 通过对话、MCP 或业务模型生成，走同一套命令。",
   },
   {
     icon: ShieldCheck,
@@ -104,6 +116,8 @@ const guardrails = [
   "槽位限定可放的构件类型和数量上限",
   "父级约束防止构件被放到不该出现的位置",
   "注入品牌、行业和语气等业务上下文",
+  "沙盘场景和应用方案里的每个引用都对照业务模型校验，问题逐条列出",
+  "没有配置模型时退回规则草稿，并明确标注来源",
   "每次修改都是一条命令，随时撤销",
 ];
 
@@ -120,6 +134,10 @@ const compare: { row: string; cells: [Cell, Cell, Cell] }[] = [
   { row: "只使用你设计系统里的组件", cells: ["yes", "partial", "no"] },
   { row: "非技术成员可以直接可视化修改", cells: ["yes", "no", "yes"] },
   { row: "导出可维护的 React 源码", cells: ["yes", "yes", "no"] },
+  {
+    row: "从业务模型推演场景并生成多页面应用",
+    cells: ["yes", "partial", "partial"],
+  },
   { row: "每一步修改都可撤销", cells: ["yes", "partial", "partial"] },
   { row: "部署在自己的服务器，数据不出门", cells: ["yes", "yes", "no"] },
 ];
@@ -138,7 +156,7 @@ const roles = [
   {
     icon: Users,
     who: "产品经理",
-    body: "用对话调整列表、表单和详情页，不用排队等开发排期。",
+    body: "导入业务模型，推演业务场景，再用对话调整生成的列表、表单和详情页。",
   },
   {
     icon: Megaphone,
@@ -157,8 +175,8 @@ const integrations = [
   {
     icon: Plug,
     title: "MCP 服务",
-    body: "支持 STDIO 和 HTTP，让 Claude、Cursor 等智能体直接读写页面。",
-    tag: "apply_commands",
+    body: "支持 STDIO 和 HTTP。Claude、Cursor 等智能体既能读写页面，也能导入业务模型、推演沙盘、生成并导出整个应用。",
+    tag: "build_app_from_ontology",
   },
   {
     icon: Package,
@@ -180,11 +198,46 @@ const templates = [
   { title: "图书管理", body: "记录增删改与详情页" },
 ];
 
+const businessFlow = [
+  {
+    icon: FileJson,
+    title: "导入业务模型",
+    body: "上传语义模型 YAML，按对象、关系、行为、规则、角色、状态、事件和指标分视角查看和编辑。引用错误带 YAML 路径列为问题，导出时保留原始标识和未知字段。",
+  },
+  {
+    icon: FlaskConical,
+    title: "业务沙盘推演",
+    body: "AI 从模型推断业务场景：参与角色、触发条件、操作步骤、读写对象、状态变化和异常。每个引用都对照模型校验，确认后成为流程蓝图，并统计命令覆盖。",
+  },
+  {
+    icon: Wand2,
+    title: "一键应用设计",
+    body: "AI 给出应用方案：模块、名称、图标、列表列和字段标签。方案校验通过后，每个模块生成列表和详情页面，模块之间互相链接，并带三条示例数据。",
+  },
+  {
+    icon: FileArchive,
+    title: "导出前端工程",
+    body: "整个应用打包成一个独立的 Next.js 工程 zip：每个模块有列表、详情、新建和编辑路由，共享导航，数据走可替换的仓储层。",
+  },
+] as const;
+
+const appTree = `business-app.zip
+├─ src/app/<模块>/page.tsx          列表
+├─ src/app/<模块>/[id]/page.tsx     详情
+├─ src/app/<模块>/new/page.tsx      新建
+├─ src/app/<模块>/[id]/edit/        编辑
+├─ src/app-runtime/repository.ts    可替换的数据仓储
+├─ src/app-data/<模块>.json         示例数据
+├─ dsl/<模块>.dsl.json              页面 DSL
+├─ contract.json                    查询与命令契约
+└─ app-design.json                  设计方案溯源`;
+
 const footerLinks: { group: string; links: [string, string][] }[] = [
   {
     group: "产品",
     links: [
       ["编辑器", "/editor"],
+      ["业务建模", "/business-models"],
       ["模板库", "/projects"],
       ["资源", "/resources"],
     ],
@@ -316,7 +369,7 @@ export default function LandingPage() {
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Shadcnplane
-                是一个受约束的可视化编辑器。拖拽或用一句话生成页面，保存为结构化
+                是一个受约束的可视化编辑器。拖拽或用一句话生成页面，也可以从业务模型一键生成整套应用，保存为结构化
                 DSL，再导出成可运行的 React 工程。
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -362,9 +415,9 @@ export default function LandingPage() {
             <SectionHead
               eyebrow="PRODUCT"
               title="一份构件配置，同时驱动编辑、生成和导出"
-              body="不需要在可视化工具和代码之间二选一。同一个页面，设计师拖拽、AI 生成、工程师拿走源码。"
+              body="不需要在可视化工具和代码之间二选一。同一个页面，设计师拖拽、AI 生成、业务模型驱动，工程师拿走源码。"
             />
-            <div className="mt-14 grid gap-px overflow-hidden rounded-xl border bg-border md:grid-cols-3">
+            <div className="mt-14 grid gap-px overflow-hidden rounded-xl border bg-border md:grid-cols-2 lg:grid-cols-4">
               {pillars.map(({ no, icon: Icon, title, body, link }) => (
                 <article key={no} className="flex flex-col bg-background p-8">
                   <div className="flex items-center justify-between">
@@ -385,6 +438,56 @@ export default function LandingPage() {
                   </Link>
                 </article>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="business" className="scroll-mt-16 border-b">
+          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <SectionHead
+                eyebrow="BUSINESS MODEL"
+                title="从业务模型直接生成应用"
+                body="先把业务讲清楚，再生成页面。导入业务模型，让 AI 推演业务场景、设计应用，最后导出一个可以独立运行的前端工程。"
+              />
+              <Button asChild variant="outline">
+                <Link href="/business-models">
+                  进入业务建模 <ArrowRight />
+                </Link>
+              </Button>
+            </div>
+            <div className="mt-12 grid gap-10 lg:grid-cols-[1.15fr_1fr]">
+              <ol className="grid gap-6 sm:grid-cols-2">
+                {businessFlow.map(({ icon: Icon, title, body }, index) => (
+                  <li key={title} className="rounded-xl border p-6">
+                    <div className="flex items-center justify-between">
+                      <span className="grid size-10 place-items-center rounded-lg bg-accent text-primary">
+                        <Icon className="size-5" />
+                      </span>
+                      <span className="font-mono text-sm text-muted-foreground">
+                        0{index + 1}
+                      </span>
+                    </div>
+                    <h3 className="mt-5 font-semibold">{title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {body}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+              <div className="self-start overflow-hidden rounded-xl border bg-[#1b1f24] text-[#e6edf3] shadow-xl">
+                <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5 text-xs text-[#9aa4ae]">
+                  <FileArchive className="size-3.5" />
+                  导出前端工程 (zip)
+                </div>
+                <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-6">
+                  <code>{appTree}</code>
+                </pre>
+                <p className="border-t border-white/10 px-5 py-3 text-xs leading-5 text-[#9aa4ae]">
+                  未配置模型或设置 LLM_PROVIDER=mock
+                  时，沙盘和应用设计使用规则草稿，同样可以走完整个流程。
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -634,7 +737,7 @@ export default function LandingPage() {
               准备好了就开始
             </h2>
             <p className="relative mx-auto mt-4 max-w-xl text-base leading-7 text-white/80">
-              打开编辑器，用模板或一句话生成你的第一个页面。
+              打开编辑器，用模板或一句话生成你的第一个页面；或者导入业务模型，生成整套应用。
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
               <Button asChild size="lg" variant="secondary">
@@ -648,7 +751,7 @@ export default function LandingPage() {
                 variant="ghost"
                 className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
               >
-                <Link href="/projects">浏览模板</Link>
+                <Link href="/business-models">导入业务模型</Link>
               </Button>
             </div>
           </div>

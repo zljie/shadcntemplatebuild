@@ -15,7 +15,7 @@ import { TopNav } from "./top-nav";
 
 type Props = {objectTypes: ObjectTypeSummary[]; pages: PageRecord[]; templates: TemplateMeta[]; database: string};
 type Confirm = {title: string; description: string; action: () => Promise<void>; destructive?: boolean};
-const sourceLabels: Record<string, string> = {seed: "初始数据", ontology: "模型生成", composer: "设计器编辑"};
+const sourceLabels: Record<string, string> = {seed: "初始数据", ontology: "模型生成", composer: "设计器编辑", "business-model": "业务建模"};
 
 async function call(url: string, method: string, body?: unknown) {
   const response = await fetch(url, {method, headers: body ? {"Content-Type": "application/json"} : undefined, body: body ? JSON.stringify(body) : undefined});

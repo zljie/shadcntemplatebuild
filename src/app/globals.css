@@ -1,4 +1,6 @@
 @import "tailwindcss";
 @import "../runtime/styles.css";
+@import "../runtime/record-pages.css";
 @import "../builder/styles.css";
 @import "../prototype/prototype.css";
+@import "../business-model/business-model.css";
