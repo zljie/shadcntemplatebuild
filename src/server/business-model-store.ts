@@ -54,7 +54,7 @@ export function importBusinessModel(yaml: string, fileName: string): Result<Stor
   return {ok: true, value: getBusinessModel(id)!};
 }
 
-function save(id: string, model: BusinessModel): StoredBusinessModel {
+export function saveBusinessModel(id: string, model: BusinessModel): StoredBusinessModel {
   db().prepare("update business_models set document = ?, updated_at = ? where id = ?").run(JSON.stringify(model), now(), id);
   return getBusinessModel(id)!;
 }
@@ -63,7 +63,7 @@ export function updateBusinessModel(id: string, patches: unknown[]): Result<Stor
   const stored = getBusinessModel(id);
   if (!stored) return {ok: false, issues: [{severity: "error", path: "id", message: "业务模型不存在"}]};
   const result = applyPatches(stored.model, patches);
-  return result.ok ? {ok: true, value: save(id, result.model)} : result;
+  return result.ok ? {ok: true, value: saveBusinessModel(id, result.model)} : result;
 }
 
 export function deleteBusinessModel(id: string): boolean {
@@ -89,5 +89,5 @@ export function createPagesForEntity(id: string, entityId: string): Result<{obje
   const pages = generatePages(apiName, undefined, {source: "business-model"});
   if (!pages.ok) return {ok: false, issues: pages.errors.map(e => ({severity: "error", path: e.path, message: e.message}))};
   const next: BusinessModel = {...model, bindings: {...model.bindings, [entityId]: {objectType: apiName, boundAt: now()}}};
-  return {ok: true, value: {objectType: apiName, pages: pages.value, skipped: converted.skipped, model: save(id, next)}};
+  return {ok: true, value: {objectType: apiName, pages: pages.value, skipped: converted.skipped, model: saveBusinessModel(id, next)}};
 }

@@ -1,6 +1,8 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
 import type { ObjectTypeInput, Property } from "../ontology/model";
+import type { Scenario } from "./sandbox";
+import type { AppDesign } from "./app-design";
 
 /**
  * Business model (BMF-001) imported from a semantic-model YAML. The authored elements (entities,
@@ -37,6 +39,10 @@ export type BusinessModel = {
   name: string; description: string; sourceVersion: string; namespace?: string; metadata: Raw;
   entities: BmEntity[]; relationships: BmRelationship[]; actions: BmAction[]; rules: BmRule[]; metrics: BmMetric[];
   bindings: Record<string, EntityBinding>;
+  /** Sandbox scenarios (业务沙盘推演): process blueprints, inferred until confirmed. Not part of the YAML. */
+  scenarios?: Scenario[];
+  /** Last one-click conversion to app design. Not part of the YAML. */
+  appDesign?: AppDesign;
   /** Original containers: root document, the semantic model and its behavior block. */
   raw: {root: Raw; semantic: Raw; behavior: Raw};
 };
@@ -313,7 +319,7 @@ export type ModelCounts = Record<View, number> & {fields: number; queries: numbe
 export function countModel(model: BusinessModel): ModelCounts {
   return {
     entity: model.entities.length, relationship: model.relationships.length, action: model.actions.length, rule: model.rules.length,
-    role: inferRoles(model).length, state: inferStates(model).length, event: inferEvents(model).length, metric: model.metrics.length, process: 0, document: 0,
+    role: inferRoles(model).length, state: inferStates(model).length, event: inferEvents(model).length, metric: model.metrics.length, process: model.scenarios?.length ?? 0, document: 0,
     fields: model.entities.reduce((sum, e) => sum + e.fields.length, 0),
     queries: model.actions.filter(a => a.kind === "query").length, commands: model.actions.filter(a => a.kind === "command").length,
     inferredEnums: model.entities.reduce((sum, e) => sum + e.fields.filter(f => enumValues(f)?.inferred).length, 0),
@@ -353,6 +359,8 @@ export const modelPatchSchema = z.discriminatedUnion("kind", [
   z.object({kind: z.literal("action"), id: z.string(), name: name.optional(), description: text(4000).optional()}).strict(),
   z.object({kind: z.literal("rule"), id: z.string(), name: name.optional(), severity: z.enum(["error", "warning", "info"]).optional(), message: text(2000).optional(), remediation: text(2000).optional()}).strict(),
   z.object({kind: z.literal("metric"), id: z.string(), description: text(2000).optional()}).strict(),
+  z.object({kind: z.literal("scenario"), id: z.string(), status: z.enum(["inferred", "confirmed"]).optional(), name: name.optional(), goal: text(400).optional()}).strict(),
+  z.object({kind: z.literal("removeScenario"), id: z.string()}).strict(),
 ]);
 export type ModelPatch = z.infer<typeof modelPatchSchema>;
 type PatchResult = {ok: true; model: BusinessModel} | {ok: false; issues: ModelIssue[]};
@@ -365,6 +373,14 @@ export function applyPatches(model: BusinessModel, patches: unknown[]): PatchRes
     if (!parsed.success) return {ok: false, issues: parsed.error.issues.map(e => ({severity: "error", path: `patches[${index}].${e.path.join(".")}`, message: e.message}))};
     const patch = parsed.data, missing = (what: string): PatchResult => ({ok: false, issues: [{severity: "error", path: `patches[${index}].id`, message: `${what}不存在`}]});
     if (patch.kind === "model") { if (patch.description !== undefined) next.description = patch.description; continue; }
+    if (patch.kind === "scenario" || patch.kind === "removeScenario") {
+      const scenarios = next.scenarios ?? [], index = scenarios.findIndex(x => x.id === patch.id);
+      if (index < 0) return missing("场景");
+      if (patch.kind === "removeScenario") scenarios.splice(index, 1);
+      else Object.assign(scenarios[index], Object.fromEntries(Object.entries(patch).filter(([key, value]) => key !== "kind" && key !== "id" && value !== undefined)));
+      next.scenarios = scenarios;
+      continue;
+    }
     if (patch.kind === "entity" || patch.kind === "field") {
       const entity = next.entities.find(e => e.id === (patch.kind === "entity" ? patch.id : patch.entity));
       if (!entity) return missing("对象");

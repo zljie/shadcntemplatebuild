@@ -2,6 +2,7 @@
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, ArrowUpRight, CheckCircle2, Clock, Download, Info, KeyRound, Network, RotateCcw, Save, Search, Sparkles, Wand2 } from "lucide-react";
+import { AppDesignView, SandboxView, type AiStatus } from "./ai-views";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,9 +13,9 @@ import {
   type BmAction, type BmEntity, type BusinessModel, type FieldConstraints, type FieldType, type JsonSchema, type ModelIssue, type ModelPatch, type View,
 } from "./model";
 
-const tabs = ["overview", "entities", "relationships", "actions", "rules", "roles", "metrics", "lifecycle", "issues"] as const;
+const tabs = ["overview", "entities", "relationships", "actions", "rules", "roles", "metrics", "lifecycle", "issues", "sandbox", "design"] as const;
 type Tab = typeof tabs[number];
-type Props = {stored: StoredBusinessModel; initialTab?: string; initialEntity?: string};
+type Props = {stored: StoredBusinessModel; ai: AiStatus; initialTab?: string; initialEntity?: string};
 
 async function request(url: string, method: string, body: unknown) {
   const response = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -23,7 +24,7 @@ async function request(url: string, method: string, body: unknown) {
   return result;
 }
 
-export function BusinessModelWorkspace({stored, initialTab, initialEntity}: Props) {
+export function BusinessModelWorkspace({stored, ai, initialTab, initialEntity}: Props) {
   const [data, setData] = useState(stored);
   const [tab, setTabState] = useState<Tab>(tabs.includes(initialTab as Tab) ? initialTab as Tab : "overview");
   const [entityId, setEntityState] = useState(stored.model.entities.some(e => e.id === initialEntity) ? initialEntity! : stored.model.entities[0]?.id ?? "");
@@ -41,6 +42,7 @@ export function BusinessModelWorkspace({stored, initialTab, initialEntity}: Prop
   const setTab = (value: Tab) => { setTabState(value); sync({tab: value}); };
   const openEntity = (id: string) => { setEntityState(id); setTabState("entities"); sync({tab: "entities", entity: id}); };
 
+  const notify = (tone: "ok" | "error", text: string) => setNotice({tone, text});
   async function save(patches: ModelPatch[], success: string): Promise<boolean> {
     setBusy(true); setNotice(null);
     try { setData(await request(base, "PATCH", {patches})); setNotice({tone: "ok", text: success}); return true; }
@@ -72,7 +74,10 @@ export function BusinessModelWorkspace({stored, initialTab, initialEntity}: Prop
             {typeof model.metadata.implementation_status === "string" && <Badge variant="outline">{model.metadata.implementation_status}</Badge>}
             <Badge variant={errors ? "destructive" : "secondary"}>{errors ? `${errors} 个错误` : "引用校验通过"}</Badge>
           </div></div>
-        <div className="catalog-hero-actions"><Button asChild variant="outline"><a href={`${base}/export`}><Download size={14}/>导出 YAML</a></Button></div>
+        <div className="catalog-hero-actions">
+          <Button variant="outline" onClick={() => setTab("sandbox")}><Sparkles size={14}/>沙盘推演</Button>
+          <Button onClick={() => setTab("design")}><Wand2 size={14}/>一键生成应用</Button>
+          <Button asChild variant="outline"><a href={`${base}/export`}><Download size={14}/>导出 YAML</a></Button></div>
       </section>
       <p className={`catalog-notice${notice?.tone === "error" ? " danger" : ""}`} role="status">{busy ? "处理中…" : notice?.text}</p>
 
@@ -87,6 +92,8 @@ export function BusinessModelWorkspace({stored, initialTab, initialEntity}: Prop
           <TabsTrigger value="metrics">指标 {counts.metric}</TabsTrigger>
           <TabsTrigger value="lifecycle">状态与事件</TabsTrigger>
           <TabsTrigger value="issues">问题 {issues.length}</TabsTrigger>
+          <TabsTrigger value="sandbox" className="bm-tab-ai"><Sparkles size={13}/>业务沙盘推演{model.scenarios?.length ? ` ${model.scenarios.length}` : ""}</TabsTrigger>
+          <TabsTrigger value="design" className="bm-tab-ai"><Wand2 size={13}/>应用设计</TabsTrigger>
         </TabsList></div>
 
         <TabsContent value="overview"><Overview data={data} onOpen={setTab}/></TabsContent>
@@ -110,16 +117,18 @@ export function BusinessModelWorkspace({stored, initialTab, initialEntity}: Prop
         <TabsContent value="metrics"><Metrics model={model} issues={issues}/></TabsContent>
         <TabsContent value="lifecycle"><Lifecycle model={model} states={derived.states} events={derived.events} onOpenEntity={openEntity}/></TabsContent>
         <TabsContent value="issues"><Issues issues={issues}/></TabsContent>
+        <TabsContent value="sandbox"><SandboxView data={data} ai={ai} onModel={setData} notify={notify} onPatch={save}/></TabsContent>
+        <TabsContent value="design"><AppDesignView data={data} ai={ai} onModel={setData} notify={notify}/></TabsContent>
       </Tabs>
     </main>
   </div>;
 }
 
 // ── Overview ────────────────────────────────────────────────────────────────
-const viewTab: Partial<Record<View, Tab>> = {entity: "entities", relationship: "relationships", action: "actions", rule: "rules", role: "roles", metric: "metrics", state: "lifecycle", event: "lifecycle"};
+const viewTab: Partial<Record<View, Tab>> = {process: "sandbox", entity: "entities", relationship: "relationships", action: "actions", rule: "rules", role: "roles", metric: "metrics", state: "lifecycle", event: "lifecycle"};
 const viewHints: Record<View, string> = {
   entity: "有身份、可追踪的事物", relationship: "对象之间的关联", action: "查询与命令", rule: "策略与约束", role: "由 allowed_roles 推断",
-  state: "由 status 字段推断", event: "由 *_event 推断", metric: "分析口径", process: "源文件未定义", document: "源文件未定义",
+  state: "由 status 字段推断", event: "由 *_event 推断", metric: "分析口径", process: "沙盘推演场景", document: "源文件未定义",
 };
 function Overview({data, onOpen}: {data: StoredBusinessModel; onOpen: (tab: Tab) => void}) {
   const {model, issues, counts} = data;
@@ -375,7 +384,7 @@ function Lifecycle({model, states, events, onOpenEntity}: {model: BusinessModel;
       <div className="table-card"><table><thead><tr><th>事件</th><th>记录对象</th><th>产生操作（由描述推断）</th></tr></thead>
         <tbody>{events.map(e => <tr key={e.id}><td><code>{e.name}</code> <Badge variant="outline" className="bm-inferred">推断</Badge></td><td>{e.entity}.{e.field}</td><td>{e.producedBy.join("、") || "—"}</td></tr>)}</tbody></table></div></section>
     <div className="bm-two">
-      <section className="bm-section muted"><h2>{viewLabels.process}</h2><p className="bm-footnote">未定义。采购申请 → 审批 → 下单 → 验收 → 入库可作为首个流程，引用已有操作。</p></section>
+      <section className="bm-section muted"><h2>{viewLabels.process}</h2><p className="bm-footnote">源文件未定义。可在「业务沙盘推演」中推演场景，确认后作为业务流程蓝本。</p></section>
       <section className="bm-section muted"><h2>{viewLabels.document}</h2><p className="bm-footnote">未定义。采购订单、验收单、借阅规章等可在后续迭代中定义为文档类型。</p></section>
     </div>
   </div>;

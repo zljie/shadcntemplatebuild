@@ -73,3 +73,37 @@ test("upload ontology YAML, edit a loan field and keep it after reload", async (
   await page.screenshot({ path: `${shots}/10-model-list.png` });
   expect(errors).toEqual([]);
 });
+
+test("sandbox scenarios and one-click app design", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1440, height: 1800 });
+  await page.goto("/business-models/campus_library?tab=sandbox");
+  await expect(page.getByRole("tab", { name: /业务沙盘推演/ })).toHaveAttribute("data-state", "active");
+  await page.getByRole("button", { name: /AI 推演场景|生成场景草稿/ }).click();
+  await expect(page.getByTestId("scenario-count")).not.toHaveText("0", { timeout: 180_000 });
+  const first = page.locator("article.bm-scenario").first();
+  await first.getByRole("button", { name: "确认为流程蓝本" }).click();
+  await expect(first.getByText("流程蓝本", { exact: true })).toBeVisible();
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: `${shots}/11-sandbox.png` });
+
+  await openTab(page, "应用设计");
+  await page.getByRole("button", { name: /^(AI 一键生成应用|按规则生成应用)$/ }).click();
+  await expect(page.getByTestId("design-modules")).toBeVisible({ timeout: 180_000 });
+  expect(Number(await page.getByTestId("design-modules").textContent())).toBeGreaterThanOrEqual(10);
+  await page.screenshot({ path: `${shots}/12-app-design.png` });
+
+  await page.reload();
+  await expect(page.getByTestId("design-modules")).toBeVisible();
+  const open = page.getByRole("row", { name: /campus-library-book-title/ }).getByRole("link", { name: "打开" });
+  await expect(open).toHaveAttribute("href", "/apps/campus-library-book-title");
+  await open.click();
+  await expect(page.getByRole("table").getByRole("row")).toHaveCount(4); // header + 3 sample records
+  await page.screenshot({ path: `${shots}/13-generated-app.png` });
+
+  await page.goto("/resources");
+  await page.getByRole("tab", { name: "页面" }).click();
+  await expect(page.getByRole("cell", { name: "业务建模" }).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
