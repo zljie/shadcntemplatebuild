@@ -21,6 +21,7 @@ import {
 } from "../core/templates";
 import { RUNTIME_ITEM } from "../core/shadcn-registry";
 import type { PageDocument } from "../core/schema";
+import { registerBusinessModelTools } from "./business-model-tools";
 
 /**
  * One tool surface for every transport (STDIO in src/mcp/server.mts, Streamable HTTP in
@@ -312,6 +313,8 @@ export function createPageServer({
       },
     );
   }
+
+  registerBusinessModelTools(server, { local });
 
   // ── Resources & prompts ────────────────────────────────────────────────────
   server.registerResource(

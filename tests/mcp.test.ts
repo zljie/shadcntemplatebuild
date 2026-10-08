@@ -12,7 +12,7 @@ it("discovers and calls all tools over real STDIO, including validation failures
   const dirs:string[]=[];
   try{
     await client.connect(transport);
-    expect((await client.listTools()).tools.map(tool=>tool.name).sort()).toEqual(["apply_commands","export_project","generate_page_code","get_component","get_component_source","get_page_protocol","get_template","list_components","list_templates","save_template","validate_page"]);
+    expect((await client.listTools()).tools.map(tool=>tool.name).sort()).toEqual(["apply_commands","export_app","export_project","generate_app_design","generate_page_code","get_app_page","get_business_model","get_component","get_component_source","get_page_protocol","get_template","import_business_model","list_business_models","list_components","list_templates","run_business_sandbox","save_app_page","save_template","update_business_model","validate_page"]);
     const call=async(name:string,args:Record<string,unknown>={})=>{const result=await client.callTool({name,arguments:args});return result.structuredContent as Record<string,unknown>;};
     expect((await call("list_components")).components).toHaveLength(13);expect((await call("list_components",{detail:"full"})).components).toHaveLength(13);
     const protocol=await call("get_page_protocol");expect(protocol.schema).toBeDefined();expect(protocol.rules).toBeDefined();

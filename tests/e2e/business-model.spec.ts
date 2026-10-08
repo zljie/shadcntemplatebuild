@@ -96,6 +96,9 @@ test("sandbox scenarios and one-click app design", async ({ page }) => {
 
   await page.reload();
   await expect(page.getByTestId("design-modules")).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "导出前端工程 (zip)" }).click();
+  expect((await download).suggestedFilename()).toBe("campus_library-app.zip");
   const open = page.getByRole("row", { name: /campus-library-book-title/ }).getByRole("link", { name: "打开" });
   await expect(open).toHaveAttribute("href", "/apps/campus-library-book-title");
   await open.click();

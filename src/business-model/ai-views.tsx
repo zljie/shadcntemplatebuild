@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, ArrowUpRight, Bot, CheckCircle2, Flag, Loader2, PencilRuler, Sparkles, Trash2, Undo2, Wand2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowUpRight, Bot, CheckCircle2, Download, Flag, Loader2, PencilRuler, Sparkles, Trash2, Undo2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { StoredBusinessModel } from "@/server/business-model-store";
@@ -142,6 +142,7 @@ export function AppDesignView({data, ai, onModel, notify}: {data: StoredBusiness
         <p className="bm-footnote">{usesAi(ai) ? "AI" : "规则"}根据对象、关系、行为与沙盘场景给出应用设计方案（模块、名称、标题字段、列表列、字段标签），方案经模型校验后沿用现有生成路径，为每个模块生成数据模型、示例记录以及「列表 + 详情」「独立详情」「新建 / 编辑」页面，模块之间按关系建立关联。已在页面设计器中修改过的页面不会被覆盖。</p></div>
         <AiBadge ai={ai}/></div>
       <div className="bm-ai-form"><Button disabled={running} onClick={() => void convert()}>{running ? <><Loader2 size={14} className="bm-spin"/>生成中… {elapsed}s</> : <><Wand2 size={14}/>{usesAi(ai) ? "AI 一键生成应用" : "按规则生成应用"}</>}</Button>
+        {design && <Button asChild variant="outline"><a href={`/api/business-models/${encodeURIComponent(data.id)}/export-app`} download><Download size={14}/>导出前端工程 (zip)</a></Button>}
         {design && <span className="bm-footnote">上次生成：{design.generatedAt.slice(0, 16).replace("T", " ")} · {design.source === "rule-based" ? "规则生成" : design.source}</span>}</div>
     </section>
     {design ? <>
@@ -161,7 +162,7 @@ export function AppDesignView({data, ai, onModel, notify}: {data: StoredBusiness
               <small className="bm-footnote">{m.pages} 页 · {m.records} 条</small></div></td></tr>; })}</tbody></table></div></div>
       {design.plan.skipped.length > 0 && <section className="bm-section muted"><h2>未生成模块的对象</h2><ul className="bm-mini">{design.plan.skipped.map(s => <li key={s.entity}><code>{s.entity}</code> {s.reason}</li>)}</ul></section>}
       {design.issues.length > 0 && <section className="bm-section"><h2>方案校验</h2><ul className="bm-issue-list">{design.issues.map((issue, i) => <li key={i}><Badge variant={issue.severity === "error" ? "destructive" : "secondary"}>{issue.severity === "error" ? "错误" : "提醒"}</Badge><span>{issue.message}<code>{issue.path}</code></span></li>)}</ul></section>}
-      <p className="bm-footnote">生成的数据模型与页面同时出现在「资源清单」和「业务原型」中，可继续在页面设计器中调整。</p>
+      <p className="bm-footnote">生成的数据模型与页面同时出现在「资源清单」和「业务原型」中，可继续在页面设计器中调整。「导出前端工程」生成独立的 Next.js 工程：每个模块包含列表 + 详情、详情、新建、编辑路由，示例数据经可替换的 Repository 访问，contract.json 列出模型中的查询与命令，app-design.json 记录追溯关系。也可通过 MCP 工具 export_app 完成。</p>
     </> : <div className="table-empty"><PencilRuler size={22}/><span>尚未生成应用设计。</span></div>}
   </div>;
 }

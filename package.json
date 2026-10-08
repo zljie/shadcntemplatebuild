@@ -20,7 +20,8 @@
     "templates:seed": "tsx scripts/seed-templates.mts",
     "registry:build": "tsx scripts/build-registry.mts",
     "ai:smoke": "tsx --env-file-if-exists=.env.local scripts/ai-smoke.mts",
-    "verify:ai": "tsx scripts/verify-ai-chat.mts"
+    "verify:ai": "tsx scripts/verify-ai-chat.mts",
+    "verify:app-export": "tsx scripts/verify-app-export.mts"
   },
   "dependencies": {
     "@dnd-kit/react": "0.5.0",
