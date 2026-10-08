@@ -1,0 +1,6005 @@
+version: 0.1.2
+semantic_model:
+- name: campus_library
+  description: 校园图书馆用户、书目与副本、借还续借、采购入库及借阅运营分析概念模型。接口尚待实现。
+  ai_context:
+    synonyms:
+    - 校园图书馆
+    - 图书借阅系统
+    instructions: 所有 semantic.* 均为拟建语义视图，非已存在数据源。Asia/Shanghai；时间区间左闭右开。在借=OPEN 且 returned_at IS NULL；逾期另按 due_at
+      < as_of 判定，不作为持久化状态。借阅粒度为一次借出一个副本。聚合先在事实粒度计算，禁止一对多 join 放大。读者仅可访问自身借阅与公共书目；全部权限由可信身份服务执行，输入不得自报角色。所有命令先预览，再权限/规则校验，必要审批，事务写回、回读并审计；声明性规则不代表已部署执行器。
+    examples:
+    - 我现在借了哪些书，什么时候归还？
+    - 这本书还有哪些可借副本？
+    - 本月借出量、活跃读者和热门书目是什么？
+    - 哪些借阅已经逾期？
+    - 某采购订单到货多少，入库副本来自哪次验收？
+  datasets:
+  - name: library_user
+    source: semantic.library_user
+    primary_key: &id002
+    - user_id
+    description: 一条用户记录；读者类型与员工角色分离；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 用户
+    fields:
+    - name: user_id
+      type: String
+      description: 用户ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.user_id
+    - name: campus_no
+      type: String
+      description: 学号或工号
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.campus_no
+    - name: display_name
+      type: String
+      description: 姓名
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.display_name
+    - name: reader_type
+      type: String
+      description: STUDENT/STAFF/NONE
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.reader_type
+    - name: department
+      type: String
+      description: 院系部门
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.department
+    - name: status
+      type: String
+      description: ACTIVE/SUSPENDED/CLOSED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.status
+    - name: policy_id
+      type: String
+      description: 借阅政策ID，非读者可为空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.policy_id
+    - name: created_at
+      type: DateTime
+      description: 建档时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: library_user.created_at
+      dimension:
+        is_time: true
+    unique_keys:
+    - - campus_no
+  - name: user_role
+    source: semantic.user_role
+    primary_key:
+    - user_role_id
+    description: 一个用户的一个有效角色授予；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 角色授权
+    fields:
+    - name: user_role_id
+      type: String
+      description: 授予ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: user_role.user_role_id
+    - name: user_id
+      type: String
+      description: 用户ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: user_role.user_id
+    - name: role_code
+      type: String
+      description: READER/LIBRARIAN/BUYER/APPROVER/ADMIN
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: user_role.role_code
+    - name: status
+      type: String
+      description: ACTIVE/REVOKED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: user_role.status
+    - name: granted_by
+      type: String
+      description: 授予人ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: user_role.granted_by
+    - name: granted_at
+      type: DateTime
+      description: 授予时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: user_role.granted_at
+      dimension:
+        is_time: true
+    unique_keys:
+    - - user_id
+      - role_code
+  - name: loan_policy
+    source: semantic.loan_policy
+    primary_key: &id001
+    - policy_id
+    description: 一条版本化借阅政策；使用中版本不可原地修改；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 借阅政策
+    fields:
+    - name: policy_id
+      type: String
+      description: 政策版本ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.policy_id
+    - name: policy_name
+      type: String
+      description: 政策名称
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.policy_name
+    - name: max_open_loans
+      type: Integer
+      description: 最大在借册数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.max_open_loans
+    - name: loan_days
+      type: Integer
+      description: 借期天数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.loan_days
+    - name: max_renewals
+      type: Integer
+      description: 最大续借次数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.max_renewals
+    - name: renew_days
+      type: Integer
+      description: 每次续借天数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.renew_days
+    - name: block_if_overdue
+      type: Boolean
+      description: 有逾期时阻止借出和续借
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.block_if_overdue
+    - name: status
+      type: String
+      description: DRAFT/ACTIVE/RETIRED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.status
+    - name: effective_from
+      type: DateTime
+      description: 生效时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.effective_from
+      dimension:
+        is_time: true
+    - name: effective_to
+      type: DateTime
+      description: 失效时间可为空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_policy.effective_to
+      dimension:
+        is_time: true
+  - name: book_title
+    source: semantic.book_title
+    primary_key: &id003
+    - title_id
+    description: 一个出版版本的书目，不等于实体书；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 书目
+    fields:
+    - name: title_id
+      type: String
+      description: 书目ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.title_id
+    - name: isbn
+      type: String
+      description: ISBN，可空且不假设全球唯一
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.isbn
+    - name: title
+      type: String
+      description: 书名
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.title
+    - name: author
+      type: String
+      description: 作者
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.author
+    - name: publisher
+      type: String
+      description: 出版社
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.publisher
+    - name: edition
+      type: String
+      description: 版次
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.edition
+    - name: category
+      type: String
+      description: 分类
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.category
+    - name: status
+      type: String
+      description: ACTIVE/ARCHIVED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.status
+    - name: created_at
+      type: DateTime
+      description: 创建时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_title.created_at
+      dimension:
+        is_time: true
+  - name: book_copy
+    source: semantic.book_copy
+    primary_key: &id005
+    - copy_id
+    description: 一册实体图书；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 馆藏副本
+    fields:
+    - name: copy_id
+      type: String
+      description: 副本ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.copy_id
+    - name: barcode
+      type: String
+      description: 唯一条码
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.barcode
+    - name: title_id
+      type: String
+      description: 书目ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.title_id
+    - name: location
+      type: String
+      description: 馆藏位置
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.location
+    - name: status
+      type: String
+      description: AVAILABLE/ON_LOAN/DAMAGED/LOST/WITHDRAWN
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.status
+    - name: acquired_at
+      type: DateTime
+      description: 入库时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.acquired_at
+      dimension:
+        is_time: true
+    - name: receipt_id
+      type: String
+      description: 采购验收ID，历史导入可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.receipt_id
+    - name: source_type
+      type: String
+      description: PURCHASE/LEGACY
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.source_type
+    - name: replacement_cost
+      type: Number
+      description: 参考赔偿价值，不代表应收款
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: book_copy.replacement_cost
+    unique_keys:
+    - - barcode
+  - name: loan
+    source: semantic.loan
+    primary_key: &id006
+    - loan_id
+    description: 一次向一位读者借出一个副本；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 借阅
+    fields:
+    - name: loan_id
+      type: String
+      description: 借阅ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.loan_id
+    - name: user_id
+      type: String
+      description: 读者ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.user_id
+    - name: copy_id
+      type: String
+      description: 副本ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.copy_id
+    - name: policy_id
+      type: String
+      description: 借出时的政策版本
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.policy_id
+    - name: borrowed_at
+      type: DateTime
+      description: 借出时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.borrowed_at
+      dimension:
+        is_time: true
+    - name: due_at
+      type: DateTime
+      description: 当前应还时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.due_at
+      dimension:
+        is_time: true
+    - name: returned_at
+      type: DateTime
+      description: 归还时间可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.returned_at
+      dimension:
+        is_time: true
+    - name: status
+      type: String
+      description: OPEN/RETURNED/LOST
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.status
+    - name: renewal_count
+      type: Integer
+      description: 续借次数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.renewal_count
+    - name: closed_at
+      type: DateTime
+      description: 结清时间可空，LOST须有值
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.closed_at
+      dimension:
+        is_time: true
+    - name: borrowed_by
+      type: String
+      description: 办理馆员ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan.borrowed_by
+  - name: loan_event
+    source: semantic.loan_event
+    primary_key:
+    - event_id
+    description: 一次借出、归还、续借、遗失或损坏登记事件；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 借阅事件
+    fields:
+    - name: event_id
+      type: String
+      description: 事件ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.event_id
+    - name: loan_id
+      type: String
+      description: 借阅ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.loan_id
+    - name: event_type
+      type: String
+      description: BORROW/RETURN/RENEW/REPORT_LOST/REPORT_DAMAGE
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.event_type
+    - name: occurred_at
+      type: DateTime
+      description: 事件时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.occurred_at
+      dimension:
+        is_time: true
+    - name: actor_id
+      type: String
+      description: 可信办理人ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.actor_id
+    - name: previous_due_at
+      type: DateTime
+      description: 续借前应还时间可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.previous_due_at
+      dimension:
+        is_time: true
+    - name: new_due_at
+      type: DateTime
+      description: 续借后应还时间可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.new_due_at
+      dimension:
+        is_time: true
+    - name: condition
+      type: String
+      description: NORMAL/DAMAGED/LOST或空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.condition
+    - name: reason
+      type: String
+      description: 原因说明
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: loan_event.reason
+  - name: supplier
+    source: semantic.supplier
+    primary_key: &id009
+    - supplier_id
+    description: 一个图书供应商；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 供应商
+    fields:
+    - name: supplier_id
+      type: String
+      description: 供应商ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: supplier.supplier_id
+    - name: supplier_name
+      type: String
+      description: 供应商名称
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: supplier.supplier_name
+    - name: status
+      type: String
+      description: ACTIVE/BLOCKED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: supplier.status
+    - name: contact
+      type: String
+      description: 业务联系方式，受限信息
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: supplier.contact
+  - name: purchase_budget
+    source: semantic.purchase_budget
+    primary_key: &id007
+    - budget_id
+    description: 一个预算周期的采购额度；单币种 CNY；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 采购预算
+    fields:
+    - name: budget_id
+      type: String
+      description: 预算ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.budget_id
+    - name: budget_name
+      type: String
+      description: 预算名称
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.budget_name
+    - name: period_start
+      type: Date
+      description: 周期开始
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.period_start
+      dimension:
+        is_time: true
+    - name: period_end
+      type: Date
+      description: 周期结束排他
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.period_end
+      dimension:
+        is_time: true
+    - name: allocated_amount
+      type: Number
+      description: 批准预算
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.allocated_amount
+    - name: reserved_amount
+      type: Number
+      description: 未验收订单剩余承诺金额
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.reserved_amount
+    - name: spent_amount
+      type: Number
+      description: 已验收采购金额，非财务付款金额
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.spent_amount
+    - name: currency
+      type: String
+      description: CNY
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.currency
+    - name: status
+      type: String
+      description: OPEN/CLOSED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_budget.status
+  - name: purchase_request
+    source: semantic.purchase_request
+    primary_key: &id011
+    - request_id
+    description: 针对一个书目的一条采购申请；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 采购申请
+    fields:
+    - name: request_id
+      type: String
+      description: 申请ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.request_id
+    - name: title_id
+      type: String
+      description: 书目ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.title_id
+    - name: requester_id
+      type: String
+      description: 申请人ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.requester_id
+    - name: budget_id
+      type: String
+      description: 预算ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.budget_id
+    - name: quantity
+      type: Integer
+      description: 申请册数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.quantity
+    - name: estimated_unit_price
+      type: Number
+      description: 预估单价
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.estimated_unit_price
+    - name: reason
+      type: String
+      description: 采购理由
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.reason
+    - name: status
+      type: String
+      description: DRAFT/SUBMITTED/APPROVED/REJECTED/ORDERED/CANCELLED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.status
+    - name: submitted_at
+      type: DateTime
+      description: 提交时间可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.submitted_at
+      dimension:
+        is_time: true
+    - name: approval_task_id
+      type: String
+      description: 批准该版本的任务ID可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.approval_task_id
+    - name: revision
+      type: Integer
+      description: 内容版本
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_request.revision
+  - name: purchase_order
+    source: semantic.purchase_order
+    primary_key: &id010
+    - order_id
+    description: 一个供应商的一张采购订单；同一预算；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 采购订单
+    fields:
+    - name: order_id
+      type: String
+      description: 订单ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.order_id
+    - name: supplier_id
+      type: String
+      description: 供应商ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.supplier_id
+    - name: buyer_id
+      type: String
+      description: 采购员ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.buyer_id
+    - name: budget_id
+      type: String
+      description: 预算ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.budget_id
+    - name: status
+      type: String
+      description: DRAFT/SUBMITTED/APPROVED/ISSUED/PART_RECEIVED/RECEIVED/CANCELLED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.status
+    - name: ordered_at
+      type: DateTime
+      description: 正式下单时间可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.ordered_at
+      dimension:
+        is_time: true
+    - name: total_amount
+      type: Number
+      description: 明细 quantity × unit_price 之和
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.total_amount
+    - name: currency
+      type: String
+      description: CNY
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.currency
+    - name: approval_task_id
+      type: String
+      description: 批准当前版本的任务ID可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.approval_task_id
+    - name: revision
+      type: Integer
+      description: 订单内容版本
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order.revision
+  - name: purchase_order_line
+    source: semantic.purchase_order_line
+    primary_key: &id012
+    - line_id
+    description: 一张订单中一个申请的一个书目明细；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 采购明细
+    fields:
+    - name: line_id
+      type: String
+      description: 明细ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.line_id
+    - name: order_id
+      type: String
+      description: 订单ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.order_id
+    - name: request_id
+      type: String
+      description: 采购申请ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.request_id
+    - name: title_id
+      type: String
+      description: 书目ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.title_id
+    - name: quantity
+      type: Integer
+      description: 订购册数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.quantity
+    - name: unit_price
+      type: Number
+      description: 订购单价
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.unit_price
+    - name: received_quantity
+      type: Integer
+      description: 累计验收合格册数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: purchase_order_line.received_quantity
+    unique_keys:
+    - - order_id
+      - request_id
+  - name: receipt
+    source: semantic.receipt
+    primary_key: &id004
+    - receipt_id
+    description: 一次对一个采购明细的合格到货验收批次；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 到货验收
+    fields:
+    - name: receipt_id
+      type: String
+      description: 验收ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.receipt_id
+    - name: line_id
+      type: String
+      description: 采购明细ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.line_id
+    - name: accepted_quantity
+      type: Integer
+      description: 验收合格数量
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.accepted_quantity
+    - name: received_at
+      type: DateTime
+      description: 验收时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.received_at
+      dimension:
+        is_time: true
+    - name: receiver_id
+      type: String
+      description: 馆员ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.receiver_id
+    - name: status
+      type: String
+      description: ACCEPTED/STOCKED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.status
+    - name: stocked_quantity
+      type: Integer
+      description: 已创建副本数，须等于此验收关联副本数
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: receipt.stocked_quantity
+  - name: approval_task
+    source: semantic.approval_task
+    primary_key: &id008
+    - task_id
+    description: 一次绑定业务对象和内容版本的审批；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 审批任务
+    fields:
+    - name: task_id
+      type: String
+      description: 任务ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.task_id
+    - name: object_type
+      type: String
+      description: PURCHASE_REQUEST/PURCHASE_ORDER/LOAN_POLICY/USER_ROLE
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.object_type
+    - name: object_id
+      type: String
+      description: 对应对象主键；多态引用由治理校验
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.object_id
+    - name: object_revision
+      type: Integer
+      description: 受审版本
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.object_revision
+    - name: requested_by
+      type: String
+      description: 提交人ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.requested_by
+    - name: assigned_to
+      type: String
+      description: 指定审批人ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.assigned_to
+    - name: status
+      type: String
+      description: PENDING/APPROVED/REJECTED/CANCELLED
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.status
+    - name: decision_reason
+      type: String
+      description: 审批意见
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.decision_reason
+    - name: created_at
+      type: DateTime
+      description: 创建时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.created_at
+      dimension:
+        is_time: true
+    - name: decided_at
+      type: DateTime
+      description: 决定时间可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.decided_at
+      dimension:
+        is_time: true
+    - name: action_intent
+      type: String
+      description: REQUEST_APPROVAL/ORDER_ISSUE/ORDER_CANCEL/POLICY_PUBLISH/ROLE_GRANT
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.action_intent
+    - name: object_snapshot
+      type: JSON
+      description: 服务端受审内容快照；角色授予包含user_id/role_code，采购包含价格数量预算
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.object_snapshot
+    - name: content_hash
+      type: String
+      description: 服务端规范化内容摘要，动作执行时必须与批准内容相同
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: approval_task.content_hash
+  - name: audit_event
+    source: semantic.audit_event
+    primary_key:
+    - audit_id
+    description: 一个动作尝试或外部写回结果，追加且不可改写；拟建概念接入视图，真实表/API 待映射。
+    ai_context:
+      synonyms:
+      - 操作审计
+    fields:
+    - name: audit_id
+      type: String
+      description: 审计ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.audit_id
+    - name: action_id
+      type: String
+      description: 动作ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.action_id
+    - name: actor_id
+      type: String
+      description: 可信身份ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.actor_id
+    - name: object_type
+      type: String
+      description: 对象数据集名
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.object_type
+    - name: object_id
+      type: String
+      description: 对象ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.object_id
+    - name: request_id
+      type: String
+      description: 幂等请求ID
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.request_id
+    - name: occurred_at
+      type: DateTime
+      description: 发生时间
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.occurred_at
+      dimension:
+        is_time: true
+    - name: outcome
+      type: String
+      description: SUCCEEDED/REJECTED/FAILED/PENDING
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.outcome
+    - name: input_redacted
+      type: JSON
+      description: 脱敏输入
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.input_redacted
+    - name: result_ref
+      type: String
+      description: 写回结果与回读证据引用
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.result_ref
+    - name: source_ref
+      type: String
+      description: 来源引用
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.source_ref
+    - name: approval_task_id
+      type: String
+      description: 审批任务ID可空
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: audit_event.approval_task_id
+  relationships:
+  - name: library_user_to_loan_policy
+    from: library_user
+    to: loan_policy
+    from_columns:
+    - policy_id
+    to_columns: *id001
+    ai_context:
+      synonyms:
+      - 适用政策
+  - name: user_role_to_library_user
+    from: user_role
+    to: library_user
+    from_columns:
+    - user_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 角色所属用户
+  - name: user_role_to_library_user_granted_by
+    from: user_role
+    to: library_user
+    from_columns:
+    - granted_by
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 角色授予人
+  - name: book_copy_to_book_title
+    from: book_copy
+    to: book_title
+    from_columns:
+    - title_id
+    to_columns: *id003
+    ai_context:
+      synonyms:
+      - 所属书目
+  - name: book_copy_to_receipt
+    from: book_copy
+    to: receipt
+    from_columns:
+    - receipt_id
+    to_columns: *id004
+    ai_context:
+      synonyms:
+      - 入库来源
+  - name: loan_to_library_user
+    from: loan
+    to: library_user
+    from_columns:
+    - user_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 借阅人
+  - name: loan_to_library_user_borrowed_by
+    from: loan
+    to: library_user
+    from_columns:
+    - borrowed_by
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 借出办理人
+  - name: loan_to_book_copy
+    from: loan
+    to: book_copy
+    from_columns:
+    - copy_id
+    to_columns: *id005
+    ai_context:
+      synonyms:
+      - 借阅副本
+  - name: loan_to_loan_policy
+    from: loan
+    to: loan_policy
+    from_columns:
+    - policy_id
+    to_columns: *id001
+    ai_context:
+      synonyms:
+      - 借出政策
+  - name: loan_event_to_loan
+    from: loan_event
+    to: loan
+    from_columns:
+    - loan_id
+    to_columns: *id006
+    ai_context:
+      synonyms:
+      - 借阅事件
+  - name: loan_event_to_library_user
+    from: loan_event
+    to: library_user
+    from_columns:
+    - actor_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 事件办理人
+  - name: purchase_request_to_book_title
+    from: purchase_request
+    to: book_title
+    from_columns:
+    - title_id
+    to_columns: *id003
+    ai_context:
+      synonyms:
+      - 申请书目
+  - name: purchase_request_to_library_user
+    from: purchase_request
+    to: library_user
+    from_columns:
+    - requester_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 申请人
+  - name: purchase_request_to_purchase_budget
+    from: purchase_request
+    to: purchase_budget
+    from_columns:
+    - budget_id
+    to_columns: *id007
+    ai_context:
+      synonyms:
+      - 申请预算
+  - name: purchase_request_to_approval_task
+    from: purchase_request
+    to: approval_task
+    from_columns:
+    - approval_task_id
+    to_columns: *id008
+    ai_context:
+      synonyms:
+      - 申请审批
+  - name: purchase_order_to_supplier
+    from: purchase_order
+    to: supplier
+    from_columns:
+    - supplier_id
+    to_columns: *id009
+    ai_context:
+      synonyms:
+      - 订单供应商
+  - name: purchase_order_to_library_user
+    from: purchase_order
+    to: library_user
+    from_columns:
+    - buyer_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 采购办理人
+  - name: purchase_order_to_purchase_budget
+    from: purchase_order
+    to: purchase_budget
+    from_columns:
+    - budget_id
+    to_columns: *id007
+    ai_context:
+      synonyms:
+      - 订单预算
+  - name: purchase_order_to_approval_task
+    from: purchase_order
+    to: approval_task
+    from_columns:
+    - approval_task_id
+    to_columns: *id008
+    ai_context:
+      synonyms:
+      - 订单审批
+  - name: purchase_order_line_to_purchase_order
+    from: purchase_order_line
+    to: purchase_order
+    from_columns:
+    - order_id
+    to_columns: *id010
+    ai_context:
+      synonyms:
+      - 订单明细
+  - name: purchase_order_line_to_purchase_request
+    from: purchase_order_line
+    to: purchase_request
+    from_columns:
+    - request_id
+    to_columns: *id011
+    ai_context:
+      synonyms:
+      - 来源申请
+  - name: purchase_order_line_to_book_title
+    from: purchase_order_line
+    to: book_title
+    from_columns:
+    - title_id
+    to_columns: *id003
+    ai_context:
+      synonyms:
+      - 订购书目
+  - name: receipt_to_purchase_order_line
+    from: receipt
+    to: purchase_order_line
+    from_columns:
+    - line_id
+    to_columns: *id012
+    ai_context:
+      synonyms:
+      - 验收来源明细
+  - name: receipt_to_library_user
+    from: receipt
+    to: library_user
+    from_columns:
+    - receiver_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 验收人
+  - name: approval_task_to_library_user
+    from: approval_task
+    to: library_user
+    from_columns:
+    - requested_by
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 审批提交人
+  - name: approval_task_to_library_user_assigned_to
+    from: approval_task
+    to: library_user
+    from_columns:
+    - assigned_to
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 审批人
+  - name: audit_event_to_library_user
+    from: audit_event
+    to: library_user
+    from_columns:
+    - actor_id
+    to_columns: *id002
+    ai_context:
+      synonyms:
+      - 操作人
+  - name: audit_event_to_approval_task
+    from: audit_event
+    to: approval_task
+    from_columns:
+    - approval_task_id
+    to_columns: *id008
+    ai_context:
+      synonyms:
+      - 审批证据
+  metrics:
+  - name: open_loan_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(CASE WHEN loan.status = 'OPEN' AND loan.returned_at IS NULL THEN loan.loan_id END)
+    description: 当前快照全部在借，独立于期间过滤；loan 单行粒度，拒绝未来借出与状态时间不一致记录。
+  - name: overdue_loan_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(CASE WHEN loan.status = 'OPEN' AND loan.returned_at IS NULL AND loan.due_at < CURRENT_TIMESTAMP
+          THEN loan.loan_id END)
+    description: 当前快照逾期；due_at 等于观察时刻尚不逾期；生产 CURRENT_TIMESTAMP=服务端观察时刻，演示固定 as_of。
+  - name: period_borrow_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(loan.loan_id)
+    description: 先按 borrowed_at 筛选 [start_at,end_at)，然后 COUNT；归还、遗失记录仍计入历史借出。
+  - name: period_active_readers
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(DISTINCT loan.user_id)
+    description: 先按 borrowed_at 筛选 [start_at,end_at)，借书读者去重；不是所有注册用户或仍在借用户。
+  - name: title_borrow_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(loan.loan_id)
+    description: loan→book_copy→book_title 多对一连接；按借出期间过滤并按 title_id 分组，按册次计数，降序、title_id升序并列。
+  - name: daily_borrow_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(loan.loan_id)
+    description: 按 borrowed_at 的上海本地日期分组，补零后展示；按期间过滤，按日期升序。
+  - name: available_copy_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(CASE WHEN book_copy.status = 'AVAILABLE' THEN book_copy.copy_id END)
+    description: 当前可借副本，按 title_id 可分组；书目必须 ACTIVE，关闭书目不得有 AVAILABLE 副本。
+  - name: period_return_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(CASE WHEN loan.status = 'RETURNED' THEN loan.loan_id END)
+    description: 先按 returned_at 筛选 [start_at,end_at)，loan 单行粒度。
+  - name: budget_available_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(purchase_budget.allocated_amount - purchase_budget.reserved_amount - purchase_budget.spent_amount)
+    description: 预算单行粒度，OPEN 预算；reserved 为剩余承诺，spent 为验收金额；禁止连接明细后重复累加。
+  - name: ordered_copy_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(purchase_order_line.quantity)
+    description: 按指定订单筛选明细，不连接多批次验收后再累加。
+  - name: accepted_copy_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(receipt.accepted_quantity)
+    description: 按指定订单沿 receipt→line→order 多对一过滤；只计算 ACCEPTED/STOCKED，每批验收一行。
+  - name: stocked_copy_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(book_copy.copy_id)
+    description: 按采购订单沿副本→验收→明细→订单过滤，仅 source_type='PURCHASE'；不等同验收合格数量。
+  behavior:
+    namespace: campus_library
+    behavior_layer_version: '0.1'
+    actions:
+    - id: library_user_get_by_id
+      name: 按ID查询用户
+      kind: query
+      operation: get_by_id
+      entity_name: library_user
+      applies_to:
+        entity: dataset
+        dataset: library_user
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+          required:
+          - user_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: &id013
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_user_list
+      name: 分页列出用户
+      kind: query
+      operation: list
+      entity_name: library_user
+      applies_to:
+        entity: dataset
+        dataset: library_user
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            user_id:
+              type: string
+              minLength: 1
+            campus_no:
+              type: string
+              minLength: 1
+            display_name:
+              type: string
+              minLength: 1
+            reader_type:
+              type: string
+              minLength: 1
+            department:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            policy_id:
+              type: string
+              minLength: 1
+            created_at:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: *id013
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: user_role_get_by_id
+      name: 按ID查询角色授权
+      kind: query
+      operation: get_by_id
+      entity_name: user_role
+      applies_to:
+        entity: dataset
+        dataset: user_role
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_role_id:
+              type: string
+              minLength: 1
+          required:
+          - user_role_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: user_role_list
+      name: 分页列出角色授权
+      kind: query
+      operation: list
+      entity_name: user_role
+      applies_to:
+        entity: dataset
+        dataset: user_role
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            user_role_id:
+              type: string
+              minLength: 1
+            user_id:
+              type: string
+              minLength: 1
+            role_code:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            granted_by:
+              type: string
+              minLength: 1
+            granted_at:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: loan_policy_get_by_id
+      name: 按ID查询借阅政策
+      kind: query
+      operation: get_by_id
+      entity_name: loan_policy
+      applies_to:
+        entity: dataset
+        dataset: loan_policy
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            policy_id:
+              type: string
+              minLength: 1
+          required:
+          - policy_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: loan_policy_list
+      name: 分页列出借阅政策
+      kind: query
+      operation: list
+      entity_name: loan_policy
+      applies_to:
+        entity: dataset
+        dataset: loan_policy
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            policy_id:
+              type: string
+              minLength: 1
+            policy_name:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            effective_from:
+              type: string
+              minLength: 1
+            effective_to:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: book_title_get_by_id
+      name: 按ID查询书目
+      kind: query
+      operation: get_by_id
+      entity_name: book_title
+      applies_to:
+        entity: dataset
+        dataset: book_title
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            title_id:
+              type: string
+              minLength: 1
+          required:
+          - title_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: &id014
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: book_title_list
+      name: 分页列出书目
+      kind: query
+      operation: list
+      entity_name: book_title
+      applies_to:
+        entity: dataset
+        dataset: book_title
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            title_id:
+              type: string
+              minLength: 1
+            isbn:
+              type: string
+              minLength: 1
+            title:
+              type: string
+              minLength: 1
+            author:
+              type: string
+              minLength: 1
+            publisher:
+              type: string
+              minLength: 1
+            edition:
+              type: string
+              minLength: 1
+            category:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            created_at:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: *id014
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: book_copy_get_by_id
+      name: 按ID查询馆藏副本
+      kind: query
+      operation: get_by_id
+      entity_name: book_copy
+      applies_to:
+        entity: dataset
+        dataset: book_copy
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            copy_id:
+              type: string
+              minLength: 1
+          required:
+          - copy_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: &id015
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: book_copy_list
+      name: 分页列出馆藏副本
+      kind: query
+      operation: list
+      entity_name: book_copy
+      applies_to:
+        entity: dataset
+        dataset: book_copy
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            copy_id:
+              type: string
+              minLength: 1
+            barcode:
+              type: string
+              minLength: 1
+            title_id:
+              type: string
+              minLength: 1
+            location:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            acquired_at:
+              type: string
+              minLength: 1
+            receipt_id:
+              type: string
+              minLength: 1
+            source_type:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: *id015
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: loan_get_by_id
+      name: 按ID查询借阅
+      kind: query
+      operation: get_by_id
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            loan_id:
+              type: string
+              minLength: 1
+          required:
+          - loan_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: &id016
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: loan_list
+      name: 分页列出借阅
+      kind: query
+      operation: list
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            loan_id:
+              type: string
+              minLength: 1
+            user_id:
+              type: string
+              minLength: 1
+            copy_id:
+              type: string
+              minLength: 1
+            policy_id:
+              type: string
+              minLength: 1
+            borrowed_at:
+              type: string
+              minLength: 1
+            due_at:
+              type: string
+              minLength: 1
+            returned_at:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            closed_at:
+              type: string
+              minLength: 1
+            borrowed_by:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: *id016
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: loan_event_get_by_id
+      name: 按ID查询借阅事件
+      kind: query
+      operation: get_by_id
+      entity_name: loan_event
+      applies_to:
+        entity: dataset
+        dataset: loan_event
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            event_id:
+              type: string
+              minLength: 1
+          required:
+          - event_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: &id017
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: loan_event_list
+      name: 分页列出借阅事件
+      kind: query
+      operation: list
+      entity_name: loan_event
+      applies_to:
+        entity: dataset
+        dataset: loan_event
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            event_id:
+              type: string
+              minLength: 1
+            loan_id:
+              type: string
+              minLength: 1
+            event_type:
+              type: string
+              minLength: 1
+            occurred_at:
+              type: string
+              minLength: 1
+            actor_id:
+              type: string
+              minLength: 1
+            previous_due_at:
+              type: string
+              minLength: 1
+            new_due_at:
+              type: string
+              minLength: 1
+            condition:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles: *id017
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: supplier_get_by_id
+      name: 按ID查询供应商
+      kind: query
+      operation: get_by_id
+      entity_name: supplier
+      applies_to:
+        entity: dataset
+        dataset: supplier
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            supplier_id:
+              type: string
+              minLength: 1
+          required:
+          - supplier_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: supplier_list
+      name: 分页列出供应商
+      kind: query
+      operation: list
+      entity_name: supplier
+      applies_to:
+        entity: dataset
+        dataset: supplier
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            supplier_id:
+              type: string
+              minLength: 1
+            supplier_name:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            contact:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_budget_get_by_id
+      name: 按ID查询采购预算
+      kind: query
+      operation: get_by_id
+      entity_name: purchase_budget
+      applies_to:
+        entity: dataset
+        dataset: purchase_budget
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            budget_id:
+              type: string
+              minLength: 1
+          required:
+          - budget_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_budget_list
+      name: 分页列出采购预算
+      kind: query
+      operation: list
+      entity_name: purchase_budget
+      applies_to:
+        entity: dataset
+        dataset: purchase_budget
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            budget_id:
+              type: string
+              minLength: 1
+            budget_name:
+              type: string
+              minLength: 1
+            period_start:
+              type: string
+              minLength: 1
+            period_end:
+              type: string
+              minLength: 1
+            currency:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_request_get_by_id
+      name: 按ID查询采购申请
+      kind: query
+      operation: get_by_id
+      entity_name: purchase_request
+      applies_to:
+        entity: dataset
+        dataset: purchase_request
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            request_id:
+              type: string
+              minLength: 1
+          required:
+          - request_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_request_list
+      name: 分页列出采购申请
+      kind: query
+      operation: list
+      entity_name: purchase_request
+      applies_to:
+        entity: dataset
+        dataset: purchase_request
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            request_id:
+              type: string
+              minLength: 1
+            title_id:
+              type: string
+              minLength: 1
+            requester_id:
+              type: string
+              minLength: 1
+            budget_id:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            submitted_at:
+              type: string
+              minLength: 1
+            approval_task_id:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_order_get_by_id
+      name: 按ID查询采购订单
+      kind: query
+      operation: get_by_id
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            order_id:
+              type: string
+              minLength: 1
+          required:
+          - order_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_order_list
+      name: 分页列出采购订单
+      kind: query
+      operation: list
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            order_id:
+              type: string
+              minLength: 1
+            supplier_id:
+              type: string
+              minLength: 1
+            buyer_id:
+              type: string
+              minLength: 1
+            budget_id:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            ordered_at:
+              type: string
+              minLength: 1
+            currency:
+              type: string
+              minLength: 1
+            approval_task_id:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_order_line_get_by_id
+      name: 按ID查询采购明细
+      kind: query
+      operation: get_by_id
+      entity_name: purchase_order_line
+      applies_to:
+        entity: dataset
+        dataset: purchase_order_line
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            line_id:
+              type: string
+              minLength: 1
+          required:
+          - line_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: purchase_order_line_list
+      name: 分页列出采购明细
+      kind: query
+      operation: list
+      entity_name: purchase_order_line
+      applies_to:
+        entity: dataset
+        dataset: purchase_order_line
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            line_id:
+              type: string
+              minLength: 1
+            order_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+            title_id:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: receipt_get_by_id
+      name: 按ID查询到货验收
+      kind: query
+      operation: get_by_id
+      entity_name: receipt
+      applies_to:
+        entity: dataset
+        dataset: receipt
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            receipt_id:
+              type: string
+              minLength: 1
+          required:
+          - receipt_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: receipt_list
+      name: 分页列出到货验收
+      kind: query
+      operation: list
+      entity_name: receipt
+      applies_to:
+        entity: dataset
+        dataset: receipt
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            receipt_id:
+              type: string
+              minLength: 1
+            line_id:
+              type: string
+              minLength: 1
+            received_at:
+              type: string
+              minLength: 1
+            receiver_id:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: approval_task_get_by_id
+      name: 按ID查询审批任务
+      kind: query
+      operation: get_by_id
+      entity_name: approval_task
+      applies_to:
+        entity: dataset
+        dataset: approval_task
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            task_id:
+              type: string
+              minLength: 1
+          required:
+          - task_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: approval_task_list
+      name: 分页列出审批任务
+      kind: query
+      operation: list
+      entity_name: approval_task
+      applies_to:
+        entity: dataset
+        dataset: approval_task
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            task_id:
+              type: string
+              minLength: 1
+            object_type:
+              type: string
+              minLength: 1
+            object_id:
+              type: string
+              minLength: 1
+            requested_by:
+              type: string
+              minLength: 1
+            assigned_to:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+            decision_reason:
+              type: string
+              minLength: 1
+            created_at:
+              type: string
+              minLength: 1
+            decided_at:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: audit_event_get_by_id
+      name: 按ID查询操作审计
+      kind: query
+      operation: get_by_id
+      entity_name: audit_event
+      applies_to:
+        entity: dataset
+        dataset: audit_event
+      description: 只读。按可信身份限制记录范围及返回字段；读者本人用户资料、本人借阅及事件、公共书目和副本投影。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            audit_id:
+              type: string
+              minLength: 1
+          required:
+          - audit_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: audit_event_list
+      name: 分页列出操作审计
+      kind: query
+      operation: list
+      entity_name: audit_event
+      applies_to:
+        entity: dataset
+        dataset: audit_event
+      description: 精确字段过滤，按主键升序稳定分页。时间字段等值过滤；业务范围查询使用专用 query action。不可通过 user_id 越过自身范围。
+      labels:
+      - query
+      - master_data
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+            audit_id:
+              type: string
+              minLength: 1
+            action_id:
+              type: string
+              minLength: 1
+            actor_id:
+              type: string
+              minLength: 1
+            object_type:
+              type: string
+              minLength: 1
+            object_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+            occurred_at:
+              type: string
+              minLength: 1
+            outcome:
+              type: string
+              minLength: 1
+            result_ref:
+              type: string
+              minLength: 1
+            source_ref:
+              type: string
+              minLength: 1
+            approval_task_id:
+              type: string
+              minLength: 1
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        - APPROVER
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_my_loans
+      name: 查询我的借阅
+      kind: query
+      operation: my_loans
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+        datasets:
+        - loan
+        - book_copy
+        - book_title
+      description: user_id 必须由可信会话推导。默认 OPEN；按 due_at、loan_id升序，返回书名、条码、借出/应还时间与计算逾期标记。
+      labels:
+      - query
+      - analytics
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            include_closed:
+              type: boolean
+              default: false
+          required: []
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_available_copies
+      name: 查询可借副本
+      kind: query
+      operation: available_copies
+      entity_name: book_copy
+      applies_to:
+        entity: dataset
+        dataset: book_copy
+        datasets:
+        - book_copy
+        - book_title
+      description: 仅 ACTIVE 书目的 AVAILABLE 副本；按 barcode升序，输出 copy_id/barcode/location，不返回采购成本。
+      labels:
+      - query
+      - analytics
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            title_id:
+              type: string
+              minLength: 1
+          required:
+          - title_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_borrow_dashboard
+      name: 查询借阅看板
+      kind: query
+      operation: borrow_dashboard
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+        datasets:
+        - loan
+        - book_copy
+        - book_title
+      description: 验证 start_at < end_at <= as_of。当前在借/逾期取 as_of 一致快照，不受期间过滤。期间指标按借出时间；归还量按归还时间。热门按 title_borrow_count
+        降序、title_id 升序；趋势按上海日期补零。不输出读者个人信息。as_of 非当前时须有可重建历史快照，否则拒绝。
+      labels:
+      - query
+      - analytics
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            start_at:
+              type: string
+              minLength: 1
+              format: date-time
+            end_at:
+              type: string
+              minLength: 1
+              format: date-time
+            as_of:
+              type: string
+              minLength: 1
+              format: date-time
+            top_n:
+              type: integer
+              minimum: 1
+              maximum: 20
+              default: 5
+          required:
+          - start_at
+          - end_at
+          - as_of
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_overdue_loans
+      name: 查询逾期借阅
+      kind: query
+      operation: overdue_loans
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+        datasets:
+        - loan
+        - library_user
+        - book_copy
+        - book_title
+      description: 一致快照 OPEN 且 returned_at为空、due_at<as_of；按 due_at、loan_id升序。读者只看本人；馆员可看全部。
+      labels:
+      - query
+      - analytics
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            as_of:
+              type: string
+              minLength: 1
+              format: date-time
+            page:
+              type: integer
+              minimum: 1
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+          required:
+          - as_of
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - READER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_procurement_trace
+      name: 查询采购入库追溯
+      kind: query
+      operation: procurement_trace
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+        datasets:
+        - purchase_order
+        - purchase_order_line
+        - purchase_request
+        - receipt
+        - book_copy
+        - approval_task
+      description: 先读取订单明细，再各自汇总验收和副本，避免一对多放大；输出申请、审批、数量、验收批次和条码。
+      labels:
+      - query
+      - analytics
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            order_id:
+              type: string
+              minLength: 1
+          required:
+          - order_id
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - BUYER
+        - APPROVER
+        - LIBRARIAN
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+    - id: library_user_create
+      name: 建档用户
+      kind: command
+      operation: user_create
+      entity_name: library_user
+      applies_to:
+        entity: dataset
+        dataset: library_user
+      description: 创建ACTIVE用户，校验学工号唯一；读者必须提供ACTIVE政策。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            campus_no:
+              type: string
+              minLength: 1
+            display_name:
+              type: string
+              minLength: 1
+            reader_type:
+              type: string
+              minLength: 1
+              enum:
+              - STUDENT
+              - STAFF
+              - NONE
+            department:
+              type: string
+              minLength: 1
+            policy_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - campus_no
+          - display_name
+          - reader_type
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 不需独立审批；不授予角色。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_user_update
+      name: 修改用户资料
+      kind: command
+      operation: user_update
+      entity_name: library_user
+      applies_to:
+        entity: dataset
+        dataset: library_user
+      description: 仅修改给定资料；至少一个修改字段；不能修改身份主键或角色。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            display_name:
+              type: string
+              minLength: 1
+            department:
+              type: string
+              minLength: 1
+            policy_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - user_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 不需独立审批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_user_set_status
+      name: 启停用户
+      kind: command
+      operation: user_set_status
+      entity_name: library_user
+      applies_to:
+        entity: dataset
+        dataset: library_user
+      description: 暂停不妨碍归还；有OPEN借阅不得CLOSED，历史记录不删除。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - ACTIVE
+              - SUSPENDED
+              - CLOSED
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - user_id
+          - status
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 不需独立审批；必须记录原因。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_role_grant
+      name: 授予用户角色
+      kind: command
+      operation: role_grant
+      entity_name: user_role
+      applies_to:
+        entity: dataset
+        dataset: user_role
+      description: 授予或恢复角色；禁止自批自授特权。初始管理员由部署负责人线下引导并审计。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            role_code:
+              type: string
+              minLength: 1
+              enum:
+              - READER
+              - LIBRARIAN
+              - BUYER
+              - APPROVER
+              - ADMIN
+            approval_task_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - user_id
+          - role_code
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: HIGH
+        approval: READER不需独立审批；员工及ADMIN角色必须独立审批绑定USER_ROLE授予对象。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_role_revoke
+      name: 撤销用户角色
+      kind: command
+      operation: role_revoke
+      entity_name: user_role
+      applies_to:
+        entity: dataset
+        dataset: user_role
+      description: ACTIVE→REVOKED，历史授权保留。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_role_id:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - user_role_id
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: HIGH
+        approval: 不需审批，立即收回权限；最后一个ACTIVE ADMIN不得撤销。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_policy_publish
+      name: 发布借阅政策
+      kind: command
+      operation: policy_publish
+      entity_name: loan_policy
+      applies_to:
+        entity: dataset
+        dataset: loan_policy
+      description: DRAFT→ACTIVE；数值正整数（max_renewals可0）；已使用版本不可改写。既有借阅保持policy_id及due_at。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            policy_id:
+              type: string
+              minLength: 1
+            approval_task_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - policy_id
+          - approval_task_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: HIGH
+        approval: 必须审批绑定政策ID及版本。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_book_create
+      name: 创建书目
+      kind: command
+      operation: book_create
+      entity_name: book_title
+      applies_to:
+        entity: dataset
+        dataset: book_title
+      description: 创建ACTIVE书目；ISBN规范校验及重复候选预览，未提供ISBN可建档。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            title:
+              type: string
+              minLength: 1
+            author:
+              type: string
+              minLength: 1
+            publisher:
+              type: string
+              minLength: 1
+            edition:
+              type: string
+              minLength: 1
+            category:
+              type: string
+              minLength: 1
+            isbn:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - title
+          - author
+          - category
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: LOW
+        approval: 不需独立审批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_book_update
+      name: 更新书目
+      kind: command
+      operation: book_update
+      entity_name: book_title
+      applies_to:
+        entity: dataset
+        dataset: book_title
+      description: 至少一个修改字段；不同出版版本新建书目，不能更改已有副本书目来重写历史。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            title_id:
+              type: string
+              minLength: 1
+            title:
+              type: string
+              minLength: 1
+            author:
+              type: string
+              minLength: 1
+            publisher:
+              type: string
+              minLength: 1
+            edition:
+              type: string
+              minLength: 1
+            category:
+              type: string
+              minLength: 1
+            isbn:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - title_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: LOW
+        approval: 不需独立审批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_book_archive
+      name: 归档书目
+      kind: command
+      operation: book_archive
+      entity_name: book_title
+      applies_to:
+        entity: dataset
+        dataset: book_title
+      description: 无OPEN借阅且无AVAILABLE/ON_LOAN副本才ACTIVE→ARCHIVED；先撤藏，不删除历史。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            title_id:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - title_id
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 不需独立审批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_copy_withdraw
+      name: 撤藏副本
+      kind: command
+      operation: copy_withdraw
+      entity_name: book_copy
+      applies_to:
+        entity: dataset
+        dataset: book_copy
+      description: AVAILABLE/DAMAGED/LOST→WITHDRAWN；ON_LOAN不得撤藏。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            copy_id:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - copy_id
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 不需独立审批；资产金额处置待校方确认。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_loan_borrow
+      name: 办理借出
+      kind: command
+      operation: loan_borrow
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+      description: 事务锁定用户与副本；校验ACTIVE读者、READER角色、有效政策、限额、逾期门禁及AVAILABLE副本/ACTIVE书目；创建OPEN loan、due_at按政策；副本ON_LOAN；写BORROW事件。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            copy_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - user_id
+          - copy_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 通常借出不需审批；规则不满足直接拒绝。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_loan_return
+      name: 办理归还
+      kind: command
+      operation: loan_return
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+      description: 仅OPEN→RETURNED，returned_at=closed_at=服务端时间；副本NORMAL→AVAILABLE，DAMAGED→DAMAGED并记原因；即使读者暂停或逾期仍允许归还，写RETURN事件。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            loan_id:
+              type: string
+              minLength: 1
+            condition:
+              type: string
+              minLength: 1
+              enum:
+              - NORMAL
+              - DAMAGED
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - loan_id
+          - condition
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 正常或损坏登记不需审批；赔偿另行处理。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_loan_renew
+      name: 办理续借
+      kind: command
+      operation: loan_renew
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+      description: 读者仅本人；OPEN、未逾期、ACTIVE读者/READER角色、续借次数未到借出政策上限；按旧due_at加renew_days，增加次数并写RENEW前后时间。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            loan_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - loan_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - READER
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 通常续借不需审批；不符合规则直接拒绝。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_loan_report_lost
+      name: 登记遗失
+      kind: command
+      operation: loan_report_lost
+      entity_name: loan
+      applies_to:
+        entity: dataset
+        dataset: loan
+      description: OPEN→LOST，closed_at置服务端时间，returned_at保持空；副本LOST；写REPORT_LOST事件。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            loan_id:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - loan_id
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 遗失事实登记不需审批；赔偿减免与支付不在范围。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_purchase_request_create
+      name: 创建采购申请
+      kind: command
+      operation: purchase_request_create
+      entity_name: purchase_request
+      applies_to:
+        entity: dataset
+        dataset: purchase_request
+      description: 申请人为可信会话；一个申请对应一个书目；创建revision=1。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            title_id:
+              type: string
+              minLength: 1
+            budget_id:
+              type: string
+              minLength: 1
+            quantity:
+              type: integer
+              minimum: 1
+            estimated_unit_price:
+              type: number
+              exclusiveMinimum: 0
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - title_id
+          - budget_id
+          - quantity
+          - estimated_unit_price
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 创建DRAFT不需审批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_purchase_request_submit
+      name: 提交采购申请
+      kind: command
+      operation: purchase_request_submit
+      entity_name: purchase_request
+      applies_to:
+        entity: dataset
+        dataset: purchase_request
+      description: 仅DRAFT→SUBMITTED；预算OPEN、书目ACTIVE、数量单价有效；创建绑定request_id/revision的PENDING任务，不能自批。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            request_id_business:
+              type: string
+              minLength: 1
+            assigned_to:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - request_id_business
+          - assigned_to
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 生成独立审批任务；未批准不得进入订单。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_approval_decide
+      name: 决定审批任务
+      kind: command
+      operation: approval_decide
+      entity_name: approval_task
+      applies_to:
+        entity: dataset
+        dataset: approval_task
+      description: PENDING→APPROVED/REJECTED；校验对象未变更且版本一致；审批采购申请/订单时同步相应状态，其他对象由后续发布动作处理。 按action_intent处理：ORDER_CANCEL批准只批准取消意图，不能再次将订单状态改为APPROVED。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            task_id:
+              type: string
+              minLength: 1
+            decision:
+              type: string
+              minLength: 1
+              enum:
+              - APPROVED
+              - REJECTED
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - task_id
+          - decision
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - APPROVER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: HIGH
+        approval: 仅指定有APPROVER角色人员；与提交人分离，不再递归审批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_purchase_order_create
+      name: 编制采购订单
+      kind: command
+      operation: purchase_order_create
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+      description: 每个申请一次、全量quantity且同预算；创建DRAFT订单/明细，计算total_amount，revision=1；申请在下单时变ORDERED。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            supplier_id:
+              type: string
+              minLength: 1
+            budget_id:
+              type: string
+              minLength: 1
+            lines:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  request_id:
+                    type: string
+                    minLength: 1
+                  unit_price:
+                    type: number
+                    exclusiveMinimum: 0
+                required:
+                - request_id
+                - unit_price
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - supplier_id
+          - budget_id
+          - lines
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: DRAFT不需审批；只允许已批准申请。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_purchase_order_submit
+      name: 提交订单审批
+      kind: command
+      operation: purchase_order_submit
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+      description: DRAFT→SUBMITTED；校验供应商ACTIVE、预算OPEN、申请有效，预览总额；预算不足拒绝并提交补充预算人工处理。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            order_id:
+              type: string
+              minLength: 1
+            assigned_to:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - order_id
+          - assigned_to
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 生成绑定订单revision的独立审批任务。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_purchase_order_issue
+      name: 批准后正式下单
+      kind: command
+      operation: purchase_order_issue
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+      description: APPROVED→ISSUED；锁定预算/申请、重新校验supplier与余额，原子预占total_amount、申请→ORDERED；同申请禁止重复下单；外部订单回读前仅PENDING，失败补偿释放预占。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            order_id:
+              type: string
+              minLength: 1
+            approval_task_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - order_id
+          - approval_task_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: HIGH
+        approval: 必须匹配已APPROVED且版本一致订单任务。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_purchase_order_cancel
+      name: 取消未到货订单
+      kind: command
+      operation: purchase_order_cancel
+      entity_name: purchase_order
+      applies_to:
+        entity: dataset
+        dataset: purchase_order
+      description: 仅ISSUED且零验收；外部取消确认后→CANCELLED，释放剩余预占，申请→APPROVED；部分到货取消不支持。 先调用library_approval_request创建ORDER_CANCEL任务，再由审批人决定。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            order_id:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            approval_task_id:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - order_id
+          - reason
+          - approval_task_id
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: HIGH
+        approval: 独立APPROVED任务必须对应当前订单取消意图及版本。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_receipt_accept
+      name: 登记合格到货
+      kind: command
+      operation: receipt_accept
+      entity_name: receipt
+      applies_to:
+        entity: dataset
+        dataset: receipt
+      description: ISSUED/PART_RECEIVED；锁明细和预算，累计验收不得超订购；新增ACCEPTED批次、累计数量；预算按验收金额从reserved转spent；订单按全体明细进度转PART_RECEIVED/RECEIVED。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            line_id:
+              type: string
+              minLength: 1
+            accepted_quantity:
+              type: integer
+              minimum: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - line_id
+          - accepted_quantity
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 在已批准订单数量内验收不需另批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_receipt_stock
+      name: 验收入库副本
+      kind: command
+      operation: receipt_stock
+      entity_name: book_copy
+      applies_to:
+        entity: dataset
+        dataset: book_copy
+      description: 锁验收；新条码全局唯一、书目与明细一致；此次copies数不得超过accepted-stocked；创建PURCHASE/AVAILABLE副本并关联receipt_id；可分次入库，全部完成receipt→STOCKED。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            receipt_id:
+              type: string
+              minLength: 1
+            copies:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  barcode:
+                    type: string
+                    minLength: 1
+                  location:
+                    type: string
+                    minLength: 1
+                required:
+                - barcode
+                - location
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - receipt_id
+          - copies
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 合格验收内入库不需另批。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_overdue_task_create
+      name: 创建逾期处置任务
+      kind: command
+      operation: overdue_task_create
+      entity_name: audit_event
+      applies_to:
+        entity: dataset
+        dataset: audit_event
+      description: 不写approval_task。创建审计outcome=PENDING的人工处置记录（object_type=loan），按loan_id去重；通知渠道尚未接入，不声称已发送消息。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            loan_id:
+              type: string
+              minLength: 1
+            assigned_to:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+              description: 幂等请求ID
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - loan_id
+          - assigned_to
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - LIBRARIAN
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: LOW
+        approval: 无需采购审批；此处使用独立审计待办，非审批任务。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    - id: library_approval_request
+      name: 提交政策、角色或取消审批
+      kind: command
+      operation: approval_request
+      entity_name: approval_task
+      applies_to:
+        entity: dataset
+        dataset: approval_task
+      description: 只支持POLICY_PUBLISH/ROLE_GRANT/ORDER_CANCEL。政策和订单必须存在且状态适用；角色授予object_id为目标user_id，role_code必填，服务端生成快照与摘要。验证独立APPROVER，创建绑定意图、版本及内容的PENDING任务；拒绝重复待审同意图。所有提交人均从可信会话取得。
+      labels:
+      - command
+      - transactional
+      io_schema:
+        input_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            action_intent:
+              type: string
+              enum:
+              - POLICY_PUBLISH
+              - ROLE_GRANT
+              - ORDER_CANCEL
+            object_id:
+              type: string
+              minLength: 1
+            role_code:
+              type: string
+              enum:
+              - LIBRARIAN
+              - BUYER
+              - APPROVER
+              - ADMIN
+            assigned_to:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            request_id:
+              type: string
+              minLength: 1
+            preview_only:
+              type: boolean
+              default: true
+          required:
+          - action_intent
+          - object_id
+          - assigned_to
+          - reason
+          - request_id
+          - preview_only
+        output_schema:
+          type: object
+          additionalProperties: false
+          properties:
+            status:
+              type: string
+              minLength: 1
+              enum:
+              - SUCCEEDED
+              - REJECTED
+              - FAILED
+              - PENDING
+            data:
+              type: object
+              additionalProperties: true
+            evidence_ref:
+              type: string
+              minLength: 1
+          required:
+          - status
+          - data
+          - evidence_ref
+      authorization:
+        allowed_roles:
+        - ADMIN
+        - BUYER
+        actor_source: trusted_session
+        reader_scope: self_only; book_title/book_copy public projections; no audit, staff roles, supplier or procurement
+          access
+      governance:
+        risk: MEDIUM
+        approval: 仅创建PENDING任务，不代表已获批准；后续必须library_approval_decide。
+        execution: preview → authorize → validate rules → approval if required → transactional write → readback
+          → append audit
+        idempotency: request_id identifies actor+action+canonical payload; identical retry returns original result;
+          conflicting payload rejected
+        audit_required: true
+    rules:
+    - id: rule/trusted_role_and_scope
+      name: 可信身份与最小权限
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: session is authenticated AND effective role authorizes action AND row/field scope is enforced
+      constraint:
+        type: business_guard
+        field: user_role.user_role_id
+        predicate: session is authenticated AND effective role authorizes action AND row/field scope is enforced
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: user_role
+      message: 自报actor/role不构成授权，读者不能读取他人记录、采购和审计。
+      remediation: 从身份服务恢复角色，限制对象与字段。
+    - id: rule/valid_data_before_write
+      name: 写入前数据校验
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: input schema valid AND foreign keys exist AND lifecycle transition valid
+      constraint:
+        type: business_guard
+        field: audit_event.audit_id
+        predicate: input schema valid AND foreign keys exist AND lifecycle transition valid
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: audit_event
+      message: 无效数据不能发布或写回；拒绝也须审计。
+      remediation: 修正输入或对象状态。
+    - id: rule/unique_copy_loan
+      name: 一个副本仅一个在借
+      severity: error
+      when:
+        entity: action
+        action_ids:
+        - library_loan_borrow
+        condition: COUNT(OPEN loans for copy_id) <= 1 AND copy status agrees with loan state
+      constraint:
+        type: business_guard
+        field: loan.loan_id
+        predicate: COUNT(OPEN loans for copy_id) <= 1 AND copy status agrees with loan state
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan
+      message: 并发借出只能一次成功。
+      remediation: 数据库条件唯一约束/锁与事务；用户限额须同时锁读者。
+    - id: rule/eligible_borrower
+      name: 读者资格和限额
+      severity: error
+      when:
+        entity: action
+        action_ids:
+        - library_loan_borrow
+        condition: ACTIVE reader AND ACTIVE READER role AND active policy AND open_count < max_open_loans AND overdue
+          policy satisfied
+      constraint:
+        type: business_guard
+        field: library_user.user_id
+        predicate: ACTIVE reader AND ACTIVE READER role AND active policy AND open_count < max_open_loans AND overdue
+          policy satisfied
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: library_user
+      message: 暂停、失效资格、超限或逾期门禁均阻止新借出。
+      remediation: 核实资格/归还图书，正常归还不受此门禁。
+    - id: rule/copy_available
+      name: 副本可借状态
+      severity: error
+      when:
+        entity: action
+        action_ids:
+        - library_loan_borrow
+        condition: book_copy.status = AVAILABLE AND book_title.status = ACTIVE
+      constraint:
+        type: business_guard
+        field: book_copy.copy_id
+        predicate: book_copy.status = AVAILABLE AND book_title.status = ACTIVE
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: book_copy
+      message: 遗失、损坏、撤藏或已借出副本不能借出。
+      remediation: 选择其他可借副本。
+    - id: rule/renewal_guard
+      name: 续借限制
+      severity: error
+      when:
+        entity: action
+        action_ids:
+        - library_loan_renew
+        condition: OPEN AND active authorized reader AND due_at >= server_time AND renewal_count < policy.max_renewals
+      constraint:
+        type: business_guard
+        field: loan.loan_id
+        predicate: OPEN AND active authorized reader AND due_at >= server_time AND renewal_count < policy.max_renewals
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan
+      message: 到期时刻之前或等于可续借；已逾期/次数耗尽拒绝。
+      remediation: 归还或人工核实；未来引入预约时补充预约阻断。
+    - id: rule/loan_temporal_integrity
+      name: 借阅时间与状态一致
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: borrowed_at <= due_at AND borrowed_at <= as_of AND RETURNED implies returned_at=closed_at >=
+          borrowed_at AND OPEN implies returned_at/closed_at null AND LOST implies closed_at set and returned_at
+          null
+      constraint:
+        type: business_guard
+        field: loan.loan_id
+        predicate: borrowed_at <= due_at AND borrowed_at <= as_of AND RETURNED implies returned_at=closed_at >=
+          borrowed_at AND OPEN implies returned_at/closed_at null AND LOST implies closed_at set and returned_at
+          null
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan
+      message: 状态与时间不一致记录不可进入看板。
+      remediation: 修正来源数据并保留修正审计。
+    - id: rule/policy_immutable
+      name: 借阅政策版本不可改写
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: used policy version immutable AND limits valid AND publish has approved task
+      constraint:
+        type: business_guard
+        field: loan_policy.policy_id
+        predicate: used policy version immutable AND limits valid AND publish has approved task
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan_policy
+      message: 政策变更不得改写历史到期时间。
+      remediation: 新建政策版本，确认并审批后发布。
+    - id: rule/independent_approval
+      name: 审批独立且绑定版本意图
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: APPROVED task matches object_id, object_revision, action intent AND assigned approver != requested_by
+          AND role ACTIVE
+      constraint:
+        type: business_guard
+        field: approval_task.task_id
+        predicate: APPROVED task matches object_id, object_revision, action intent AND assigned approver != requested_by
+          AND role ACTIVE
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: approval_task
+      message: 缺审批、版本失效、自批或错误意图均不能高风险写入。
+      remediation: 独立指定审批人，重新提交；取消意图记录在审计source_ref和审批decision_reason。
+    - id: rule/supplier_not_blocked
+      name: 阻断供应商不能下单
+      severity: error
+      when:
+        entity: action
+        action_ids:
+        - library_purchase_order_submit
+        - library_purchase_order_issue
+        condition: supplier.status = ACTIVE
+      constraint:
+        type: business_guard
+        field: supplier.supplier_id
+        predicate: supplier.status = ACTIVE
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: supplier
+      message: 阻断供应商不能提交或正式下单。
+      remediation: 选择有效供应商或走供应商治理流程。
+    - id: rule/budget_atomic_guard
+      name: 预算预占与人工复核
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: allocated >= reserved + spent AND budget OPEN AND order.amount <= available; receipt transfers
+          reserved to spent atomically
+      constraint:
+        type: business_guard
+        field: purchase_budget.budget_id
+        predicate: allocated >= reserved + spent AND budget OPEN AND order.amount <= available; receipt transfers
+          reserved to spent atomically
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: purchase_budget
+      message: 超预算拒绝，不绕过余额；补充预算需校方人工批准。
+      remediation: 补充预算或减少采购，批准后重新提交。
+    - id: rule/approved_request_order_once
+      name: 申请审批与重复采购
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: current request APPROVED AND same title/budget/quantity AND at most one live issued order line
+          per request
+      constraint:
+        type: business_guard
+        field: purchase_request.request_id
+        predicate: current request APPROVED AND same title/budget/quantity AND at most one live issued order line
+          per request
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: purchase_request
+      message: 未审批申请不能下单，同申请不能重复下单。
+      remediation: 取消原订单并回读后才可重新下单。
+    - id: rule/order_total_integrity
+      name: 订单金额一致
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: total_amount = SUM(line.quantity * line.unit_price) AND quantity > 0 AND unit_price > 0 AND CNY
+      constraint:
+        type: business_guard
+        field: purchase_order.order_id
+        predicate: total_amount = SUM(line.quantity * line.unit_price) AND quantity > 0 AND unit_price > 0 AND CNY
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: purchase_order
+      message: 单价、数量、金额或币种不一致不得提交。
+      remediation: 修正草稿并重新审批。
+    - id: rule/receipt_quantity_guard
+      name: 到货累计数量门禁
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: sum(receipt.accepted_quantity) = line.received_quantity <= line.quantity
+      constraint:
+        type: business_guard
+        field: receipt.receipt_id
+        predicate: sum(receipt.accepted_quantity) = line.received_quantity <= line.quantity
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: receipt
+      message: 累计验收超量拒绝，包括并发到货。
+      remediation: 锁明细后重查；拒收部分不纳入合格数量。
+    - id: rule/stock_traceability
+      name: 采购入库可追溯
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: PURCHASE copy has receipt AND copy.title_id = receipt.line.title_id AND unique barcode AND receipt.stocked_quantity
+          = count(copies) <= accepted_quantity
+      constraint:
+        type: business_guard
+        field: book_copy.copy_id
+        predicate: PURCHASE copy has receipt AND copy.title_id = receipt.line.title_id AND unique barcode AND receipt.stocked_quantity
+          = count(copies) <= accepted_quantity
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: book_copy
+      message: 无验收、重复条码、错书目或超数量不能入库。
+      remediation: 修正批次/条码并重试；LEGACY来源单独标注。
+    - id: rule/return_not_blocked
+      name: 归还与损坏处理
+      severity: error
+      when:
+        entity: action
+        action_ids:
+        - library_loan_return
+        condition: OPEN loan can return even if borrower SUSPENDED or overdue; DAMAGED needs reason
+      constraint:
+        type: business_guard
+        field: loan.loan_id
+        predicate: OPEN loan can return even if borrower SUSPENDED or overdue; DAMAGED needs reason
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan
+      message: 不得因资格暂停而阻止归还。损坏副本不能重新变AVAILABLE。
+      remediation: 登记损坏，后续赔偿另行处理。
+    - id: rule/overdue_requires_followup
+      name: 逾期生成处置待办
+      severity: warn
+      when:
+        entity: action
+        action_ids: []
+        condition: OPEN and due_at < as_of requires deduplicated pending followup audit by loan_id
+      constraint:
+        type: business_guard
+        field: loan.loan_id
+        predicate: OPEN and due_at < as_of requires deduplicated pending followup audit by loan_id
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan
+      message: 逾期需馆员处置待办；未接消息服务时只报告待办已创建。
+      remediation: 调用library_overdue_task_create并记录责任人和结果。
+    - id: rule/writeback_audit
+      name: 外部写回审计与回读
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: all commands append audit; external success requires readback result_ref; unresolved is PENDING;
+          sensitive input redacted
+      constraint:
+        type: business_guard
+        field: audit_event.audit_id
+        predicate: all commands append audit; external success requires readback result_ref; unresolved is PENDING;
+          sensitive input redacted
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: audit_event
+      message: 没有回读证据不得声称外部动作成功。
+      remediation: 核对外部引用，记录失败或补偿；审计追加不修改。
+    - id: rule/dashboard_grain
+      name: 看板事实粒度与可重算
+      severity: error
+      when:
+        entity: action
+        action_ids: []
+        condition: start < end <= as_of AND aggregates use independent fact grains AND Shanghai timezone; unavailable
+          historical snapshot rejected
+      constraint:
+        type: business_guard
+        field: loan.loan_id
+        predicate: start < end <= as_of AND aggregates use independent fact grains AND Shanghai timezone; unavailable
+          historical snapshot rejected
+        enforcement: server side; transactional if concurrent; fail closed
+      applies_to:
+        dataset: loan
+      message: 禁止采购多批次、借阅多事件造成重复计数；禁止用当前状态冒充历史快照。
+      remediation: 分开聚合再连接；使用可重建快照或当前时刻。
+    metadata:
+      implementation_status: conceptual_contract_not_deployed
+      approval_binding: 任务包含action_intent、object_snapshot、content_hash；采购绑定revision，政策使用不可变policy_id，角色object_id为目标user_id。服务端校验批准快照和当前内容一致。
+      system_of_record: 拟建library服务负责主数据/借阅；采购服务负责采购/预算；审批服务负责任务；审计服务追加日志。真实系统与API待确认。

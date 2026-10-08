@@ -15,6 +15,7 @@ const migrations = [
    create unique index objects_pk on objects(type, pk);
    create table pages(id text primary key, object_type text not null references object_types(api_name) on delete cascade, kind text not null, name text not null, document text, source text not null, updated_at text not null, unique(object_type, kind));
    create table operations(id text primary key, signature text not null, result text not null, created_at text not null);`,
+  `create table business_models(id text primary key, name text not null, file_name text not null, document text not null, source_yaml text not null, created_at text not null, updated_at text not null);`,
 ];
 
 export function databasePath(): string {
