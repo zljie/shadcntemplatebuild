@@ -1,0 +1,654 @@
+{
+ "id": "rel_c91650a4-3662-49c2-b5e2-470f1d94535b",
+ "app": "campus-library-librarian",
+ "contractVersion": "0.2.0",
+ "packageRef": {
+  "id": "campus_library",
+  "version": "0.2.0-poc.1"
+ },
+ "packageDigest": "sha256:4fa483eeefab6357325afa27c30fc4f890a2272ca5d5a264db2574f47a19a12f",
+ "actions": [
+  "library_loan_borrow"
+ ],
+ "bindings": [
+  {
+   "id": "bind.library_loan_borrow.v1",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "actionId": "library_loan_borrow",
+   "runtime": "db-connect",
+   "executor": {
+    "id": "Library.BorrowAtomically",
+    "version": "0.2.0"
+   },
+   "mappingId": "campus_library.pg.v1",
+   "policies": [
+    "Library.CanBorrow"
+   ]
+  }
+ ],
+ "mappings": [
+  {
+   "id": "campus_library.pg.v1",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "connectionRef": "env:DATABASE_URL",
+   "hasuraSource": "business",
+   "entities": [
+    {
+     "entityId": "library_user",
+     "table": "library.library_user",
+     "columns": {
+      "user_id": "user_id",
+      "campus_no": "campus_no",
+      "display_name": "display_name",
+      "reader_type": "reader_type",
+      "department": "department",
+      "status": "status",
+      "policy_id": "policy_id",
+      "created_at": "created_at"
+     },
+     "allowedOperations": [],
+     "relationships": []
+    },
+    {
+     "entityId": "user_role",
+     "table": "library.user_role",
+     "columns": {
+      "user_role_id": "user_role_id",
+      "user_id": "user_id",
+      "role_code": "role_code",
+      "status": "status",
+      "granted_by": "granted_by",
+      "granted_at": "granted_at"
+     },
+     "allowedOperations": [],
+     "relationships": []
+    },
+    {
+     "entityId": "loan_policy",
+     "table": "library.loan_policy",
+     "columns": {
+      "policy_id": "policy_id",
+      "policy_name": "policy_name",
+      "max_open_loans": "max_open_loans",
+      "loan_days": "loan_days",
+      "max_renewals": "max_renewals",
+      "renew_days": "renew_days",
+      "block_if_overdue": "block_if_overdue",
+      "status": "status",
+      "effective_from": "effective_from",
+      "effective_to": "effective_to"
+     },
+     "allowedOperations": [],
+     "relationships": []
+    },
+    {
+     "entityId": "book_title",
+     "table": "library.book_title",
+     "columns": {
+      "title_id": "title_id",
+      "isbn": "isbn",
+      "title": "title",
+      "author": "author",
+      "publisher": "publisher",
+      "edition": "edition",
+      "category": "category",
+      "status": "status",
+      "created_at": "created_at"
+     },
+     "allowedOperations": [
+      "get",
+      "list"
+     ],
+     "relationships": [
+      {
+       "name": "copies",
+       "kind": "array",
+       "target": "book_copy",
+       "fieldMapping": {
+        "title_id": "title_id"
+       }
+      }
+     ]
+    },
+    {
+     "entityId": "book_copy",
+     "table": "library.book_copy",
+     "columns": {
+      "copy_id": "copy_id",
+      "barcode": "barcode",
+      "title_id": "title_id",
+      "location": "location",
+      "status": "status",
+      "acquired_at": "acquired_at",
+      "receipt_id": "receipt_id",
+      "source_type": "source_type",
+      "replacement_cost": "replacement_cost"
+     },
+     "allowedOperations": [
+      "get",
+      "list",
+      "update"
+     ],
+     "relationships": [
+      {
+       "name": "title",
+       "kind": "object",
+       "target": "book_title",
+       "fieldMapping": {
+        "title_id": "title_id"
+       }
+      },
+      {
+       "name": "loans",
+       "kind": "array",
+       "target": "loan",
+       "fieldMapping": {
+        "copy_id": "copy_id"
+       }
+      }
+     ]
+    },
+    {
+     "entityId": "loan",
+     "table": "library.loan",
+     "columns": {
+      "loan_id": "loan_id",
+      "user_id": "user_id",
+      "copy_id": "copy_id",
+      "policy_id": "policy_id",
+      "borrowed_at": "borrowed_at",
+      "due_at": "due_at",
+      "returned_at": "returned_at",
+      "status": "status",
+      "renewal_count": "renewal_count",
+      "closed_at": "closed_at",
+      "borrowed_by": "borrowed_by"
+     },
+     "allowedOperations": [
+      "get",
+      "list"
+     ],
+     "relationships": [
+      {
+       "name": "copy",
+       "kind": "object",
+       "target": "book_copy",
+       "fieldMapping": {
+        "copy_id": "copy_id"
+       }
+      },
+      {
+       "name": "reader",
+       "kind": "object",
+       "target": "library_user",
+       "fieldMapping": {
+        "user_id": "user_id"
+       }
+      }
+     ]
+    },
+    {
+     "entityId": "loan_event",
+     "table": "library.loan_event",
+     "columns": {
+      "event_id": "event_id",
+      "loan_id": "loan_id",
+      "event_type": "event_type",
+      "occurred_at": "occurred_at",
+      "actor_id": "actor_id",
+      "previous_due_at": "previous_due_at",
+      "new_due_at": "new_due_at",
+      "condition": "condition",
+      "reason": "reason"
+     },
+     "allowedOperations": [],
+     "relationships": []
+    }
+   ]
+  }
+ ],
+ "operations": [
+  {
+   "operationId": "BookCopy.Get",
+   "version": "0.2.0-poc.1",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "mappingId": "campus_library.pg.v1",
+   "actionId": "book_copy_get",
+   "entityId": "book_copy",
+   "source": "hasura",
+   "operationType": "query",
+   "kind": "get",
+   "document": "query BookCopyGet($copy_id: String!) {\n  book_copy_by_pk(copy_id: $copy_id) {\n    copy_id\n    barcode\n    title_id\n    location\n    status\n  }\n}\n",
+   "documentSha256": "sha256:5486d9cf54dd876751e7a7960cd830bebde81e2aaf41317344b9f3fa30669be1",
+   "variablesSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "copy_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "copy_id"
+    ]
+   },
+   "shape": {
+    "rootField": "book_copy_by_pk",
+    "primaryKey": [
+     "copy_id"
+    ],
+    "filters": [],
+    "set": []
+   },
+   "authorization": {
+    "roles": [
+     "LIBRARIAN"
+    ],
+    "tenantScope": "none"
+   },
+   "queryLimits": {
+    "maxRows": 1,
+    "maxDepth": 1
+   },
+   "status": "approved"
+  },
+  {
+   "operationId": "BookCopy.List",
+   "version": "0.2.0-poc.1",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "mappingId": "campus_library.pg.v1",
+   "actionId": "book_copy_list",
+   "entityId": "book_copy",
+   "source": "hasura",
+   "operationType": "query",
+   "kind": "list",
+   "document": "query BookCopyList($where: book_copy_bool_exp!, $limit: Int!, $offset: Int!) {\n  book_copy(where: $where, limit: $limit, offset: $offset, order_by: [{copy_id: asc}]) {\n    copy_id\n    barcode\n    title_id\n    location\n    status\n    title {\n      title\n      author\n    }\n  }\n}\n",
+   "documentSha256": "sha256:babf54cf1355bd2df01919d71eb8bb9235d4c5fe3da0fc35b516fee894892bed",
+   "variablesSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "status": {
+      "type": "string"
+     },
+     "title_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+     },
+     "offset": {
+      "type": "integer",
+      "minimum": 0
+     }
+    }
+   },
+   "shape": {
+    "rootField": "book_copy",
+    "primaryKey": [
+     "copy_id"
+    ],
+    "filters": [
+     "status",
+     "title_id"
+    ],
+    "set": []
+   },
+   "authorization": {
+    "roles": [
+     "LIBRARIAN"
+    ],
+    "tenantScope": "none"
+   },
+   "queryLimits": {
+    "maxRows": 50,
+    "maxDepth": 2
+   },
+   "status": "approved"
+  },
+  {
+   "operationId": "BookCopy.ListAvailable",
+   "version": "0.2.0-poc.1",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "mappingId": "campus_library.pg.v1",
+   "actionId": "book_copy_list_available",
+   "entityId": "book_copy",
+   "source": "hasura",
+   "operationType": "query",
+   "kind": "list",
+   "document": "query BookCopyListAvailable($where: book_copy_bool_exp!, $limit: Int!, $offset: Int!) {\n  book_copy(where: $where, limit: $limit, offset: $offset, order_by: [{copy_id: asc}]) {\n    copy_id\n    barcode\n    title_id\n    status\n    title {\n      title\n    }\n  }\n}\n",
+   "documentSha256": "sha256:0ca7277b9bc460eb128c6f8b98a3ca264c4765db2e2c781f73bfa665cab38989",
+   "variablesSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "title_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20
+     },
+     "offset": {
+      "type": "integer",
+      "minimum": 0
+     }
+    }
+   },
+   "shape": {
+    "rootField": "book_copy",
+    "primaryKey": [
+     "copy_id"
+    ],
+    "filters": [
+     "title_id"
+    ],
+    "set": []
+   },
+   "authorization": {
+    "roles": [
+     "READER"
+    ],
+    "tenantScope": "none"
+   },
+   "queryLimits": {
+    "maxRows": 20,
+    "maxDepth": 2
+   },
+   "status": "approved"
+  },
+  {
+   "operationId": "BookCopy.UpdateLocation",
+   "version": "0.2.0-poc.1",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "mappingId": "campus_library.pg.v1",
+   "actionId": "book_copy_update_location",
+   "entityId": "book_copy",
+   "source": "hasura",
+   "operationType": "mutation",
+   "kind": "update",
+   "document": "mutation BookCopyUpdateLocation($copy_id: String!, $location: String) {\n  update_book_copy_by_pk(pk_columns: {copy_id: $copy_id}, _set: {location: $location}) {\n    copy_id\n    location\n  }\n}\n",
+   "documentSha256": "sha256:a0709fe3e5fc3e6a1da3d3f2b55f28fee5537838ae0ad05018f633121ad4cbd4",
+   "variablesSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "copy_id": {
+      "type": "string"
+     },
+     "location": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "copy_id",
+     "location"
+    ]
+   },
+   "shape": {
+    "rootField": "update_book_copy_by_pk",
+    "primaryKey": [
+     "copy_id"
+    ],
+    "filters": [],
+    "set": [
+     "location"
+    ]
+   },
+   "authorization": {
+    "roles": [
+     "LIBRARIAN"
+    ],
+    "tenantScope": "none"
+   },
+   "queryLimits": {
+    "maxRows": 1,
+    "maxDepth": 1
+   },
+   "status": "approved"
+  }
+ ],
+ "capabilities": [
+  {
+   "capabilityRef": "Library.Borrow",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "kind": "command",
+   "title": "办理借出",
+   "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "readerId": {
+      "type": "string",
+      "minLength": 1
+     },
+     "copyId": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "required": [
+     "readerId",
+     "copyId"
+    ]
+   },
+   "allowedRoles": [
+    "LIBRARIAN"
+   ],
+   "handler": {
+    "type": "script",
+    "module": "library/borrow",
+    "export": "execute",
+    "sha256": "sha256:c46268f4c144c611ef249ea4a68bb7789b74d0794d796588def6e2d0c6d04229",
+    "timeoutMs": 10000,
+    "dependencies": {
+     "operations": [
+      "BookCopy.Get"
+     ],
+     "commands": [
+      "Library.BorrowAtomically"
+     ],
+     "policies": [
+      "Library.CanBorrow"
+     ]
+    }
+   }
+  },
+  {
+   "capabilityRef": "BookCopy.List",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "kind": "query",
+   "title": "副本列表（直通）",
+   "allowedRoles": [
+    "LIBRARIAN"
+   ],
+   "handler": {
+    "type": "operation",
+    "operationId": "BookCopy.List"
+   },
+   "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "status": {
+      "type": "string"
+     },
+     "title_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+     },
+     "offset": {
+      "type": "integer",
+      "minimum": 0
+     }
+    }
+   }
+  },
+  {
+   "capabilityRef": "BookCopy.ListForLibrarian",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "kind": "query",
+   "title": "副本列表（脚本整形）",
+   "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "status": {
+      "type": "string"
+     },
+     "page": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "pageSize": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+     }
+    }
+   },
+   "allowedRoles": [
+    "LIBRARIAN"
+   ],
+   "handler": {
+    "type": "script",
+    "module": "library/book-copy-list",
+    "export": "execute",
+    "sha256": "sha256:916109d7917e987f8a5b3ad026e88c73262b5eecc162349e80109221b825a4a4",
+    "timeoutMs": 10000,
+    "dependencies": {
+     "operations": [
+      "BookCopy.List"
+     ],
+     "commands": [],
+     "policies": []
+    }
+   }
+  },
+  {
+   "capabilityRef": "BookCopy.ListAvailable",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "kind": "query",
+   "title": "可借副本（读者）",
+   "allowedRoles": [
+    "READER"
+   ],
+   "handler": {
+    "type": "operation",
+    "operationId": "BookCopy.ListAvailable"
+   },
+   "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "title_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20
+     },
+     "offset": {
+      "type": "integer",
+      "minimum": 0
+     }
+    }
+   }
+  },
+  {
+   "capabilityRef": "BookCopy.UpdateLocation",
+   "packageRef": {
+    "id": "campus_library",
+    "version": "0.2.0-poc.1"
+   },
+   "kind": "command",
+   "title": "调整馆藏位置（直通）",
+   "allowedRoles": [
+    "LIBRARIAN"
+   ],
+   "handler": {
+    "type": "operation",
+    "operationId": "BookCopy.UpdateLocation"
+   },
+   "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "copy_id": {
+      "type": "string"
+     },
+     "location": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "copy_id",
+     "location"
+    ]
+   }
+  }
+ ],
+ "manifestDigest": "sha256:edcb1932f5bd032d8d29377d033927e6587ccac816d29220910ba121bd97dd1f",
+ "blockers": [],
+ "readiness": {
+  "db-connect": {
+   "ready": true,
+   "blockers": [],
+   "contractVersion": "0.2.0",
+   "reportedAt": "2026-10-09T06:46:01.397Z"
+  },
+  "bff": {
+   "ready": true,
+   "blockers": [],
+   "contractVersion": "0.2.0",
+   "reportedAt": "2026-10-09T06:46:01.466Z"
+  }
+ },
+ "status": "ACTIVE",
+ "createdAt": "2026-10-09T06:46:01.346Z",
+ "activatedAt": "2026-10-09T06:46:01.474Z"
+}

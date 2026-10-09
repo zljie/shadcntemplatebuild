@@ -23,3 +23,13 @@
 
 /* Persistent prototypes: anchor navigation, long text and detail-page link */
 a.runtime-nav{text-decoration:none}a.runtime-nav:hover{background:#f3f5f4}.record-textarea{border:1px solid var(--input);border-radius:var(--ui-radius-md);padding:8px 12px;background:var(--background);color:var(--ink);resize:vertical}.record-textarea[aria-invalid=true]{border-color:var(--destructive)}.record-open{margin-top:12px;margin-left:8px}
+
+/* Business commands (Page DSL 0.2.0 record.command): preview → confirm → receipt */
+.command-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:24px}.command-bar+.record-edit{margin-top:12px}.command-hint{flex-basis:100%;margin:0;font-size:11px;color:var(--ink-muted)}
+.command-steps{display:flex;gap:6px;list-style:none;margin:4px 0 16px;padding:0;font-size:11px;color:var(--ink-muted)}.command-steps li{padding:3px 10px;border-radius:999px;background:#f3f5f4}.command-steps li[data-state=current]{background:var(--green-light);color:var(--green);font-weight:600}.command-steps li[data-state=done]{color:var(--green)}
+.command-bound{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0 0 16px;font-size:12px}.command-bound dt{color:var(--ink-muted);font-family:ui-monospace,monospace;font-size:11px}.command-bound dd{margin:2px 0 0;word-break:break-all}
+.command-result{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px}.command-result>header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.command-result code{font-size:10px;color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.command-status{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-weight:600;font-size:11px}.status-succeeded{background:var(--green-light);color:var(--green)}.status-rejected{background:#fdf1e7;color:#b45309}.status-failed{background:#fdecec;color:var(--destructive)}.status-pending{background:#eef2fb;color:#3b5ba5}
+.command-reasons{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.command-reasons li{display:flex;flex-direction:column;gap:2px}.command-reasons small{color:var(--ink-muted);font-family:ui-monospace,monospace;font-size:10px}
+.command-receipt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}.command-receipt dt{color:var(--ink-muted);font-size:11px}.command-receipt dd{margin:2px 0 0;font-weight:600;word-break:break-all}
+.command-data{margin:0;max-height:220px;overflow:auto;font-size:11px;background:#fafbfc;border-radius:6px;padding:8px}

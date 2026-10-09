@@ -208,6 +208,8 @@ export function hydratedListDetailDocument(apiName: string): PageDocument | null
   const listDetail: ListDetail = {
     ...config,
     entityName: saved?.entityName ?? config.entityName,
+    // Page DSL 0.2.0: a capability data source chosen in the composer survives re-hydration; fields that no longer exist drop out.
+    dataSource: typeof saved?.dataSource === "object" ? {...saved.dataSource, ...(saved.dataSource.fieldPaths ? {fieldPaths: Object.fromEntries(Object.entries(saved.dataSource.fieldPaths).filter(([k]) => keys.has(k)))} : {})} : config.dataSource,
     columns: columns.some(c => c.field === config.titleField) ? columns : config.columns,
     searchFields: keep(saved?.searchFields, config.searchFields),
     filters: keep(saved?.filters, config.filters),

@@ -36,7 +36,11 @@ export function validateDocument(input: unknown): Issue[] {
     if(d.internal && (parent || !node.meta.locked))errors.push({path,message:"Shell 区域必须在根级锁定"});
     if(parent && !d.parents.includes(parent.componentRef))errors.push({path,message:`${d.name} 不允许放入 ${registry[parent.componentRef]?.name}`});
     const props=d.schema.safeParse(node.props);if(!props.success)for(const issue of props.error.issues)errors.push({path:`${path}.props.${issue.path.join(".")}`,message:issue.message});
-    if(node.actions.length && node.componentRef!=="composite.data-table")errors.push({path,message:"该组件不支持 row.select 动作"});
+    node.actions.forEach((action,i)=>{
+      if(action.event==="row.select"&&node.componentRef!=="composite.data-table")errors.push({path:`${path}.actions.${i}`,message:"该组件不支持 row.select 动作"});
+      if(action.event==="record.command"&&node.componentRef!=="composite.resource-details")errors.push({path:`${path}.actions.${i}`,message:"record.command 只能放在 composite.resource-details（详情面板）"});
+    });
+    if(node.actions.filter(a=>a.event==="row.select").length>1)errors.push({path,message:"row.select 动作最多一个"});
     if(d.internal && (Object.keys(node.layout).length || Object.keys(node.responsive).length || Object.keys(node.tokens).length))errors.push({path,message:"Shell 区域布局与 Token 由规范锁定"});
     if(node.componentRef==="layout.stack")for(const key of Object.keys((node.props.slotWidths??{}) as object))if(!node.slots[key])errors.push({path,message:`槽位宽度引用不存在的 Slot ${key}`});
     for(const key of Object.keys(d.slots))if(!node.slots[key])errors.push({path,message:`缺少 Slot ${key}`});
@@ -65,8 +69,24 @@ export function validateDocument(input: unknown): Issue[] {
       for(const field of config.fields){const expected=field.type==="text"?"string":field.type;if(typeof row[field.key]!==expected)errors.push({path:`${path}.${field.key}`,message:`字段必须是 ${expected}`});}
     });
     for(const ref of ["pattern.page-header","composite.search-bar","composite.data-table","composite.resource-details"]){let count=0;walk(document.root,node=>{if(node.componentRef===ref)count++;});if(count!==1)errors.push({path:"root",message:`列表／详情模板必须且只能有一个 ${ref}`});}
+    if(typeof config.dataSource==="object"){
+      const source=config.dataSource;
+      for(const key of Object.keys(source.fieldPaths??{}))if(!keys.has(key))errors.push({path:`listDetail.dataSource.fieldPaths.${key}`,message:`引用不存在的字段 ${key}`});
+    }
+    walk(document.root,node=>node.actions.forEach((action,i)=>{
+      if(action.event!=="record.command")return;
+      const base=`node.${node.id}.actions.${i}`;
+      for(const [arg,binding] of Object.entries(action.arguments)){
+        const field=binding.from==="row"?binding.field:binding.from==="form"?binding.field:undefined;
+        if(field!==undefined&&field!=="id"&&!keys.has(field))errors.push({path:`${base}.arguments.${arg}`,message:`引用不存在的字段 ${field}`});
+      }
+      if(new Set(action.result.onSuccess.receipt?.map(r=>r.key)).size!==(action.result.onSuccess.receipt?.length??0))errors.push({path:`${base}.result.onSuccess.receipt`,message:"回执字段重复"});
+    }));
+    const labels=new Map<string,number>();walk(document.root,node=>node.actions.forEach(action=>{if(action.event==="record.command")labels.set(action.label,(labels.get(action.label)??0)+1);}));
+    for(const [label,count] of labels)if(count>1)errors.push({path:"root",message:`业务命令按钮「${label}」重复`});
     walk(document.root,node=>{if(node.componentRef==="composite.data-table"&&!node.actions.some(action=>action.capabilityRef==="context.open"))errors.push({path:`node.${node.id}.actions`,message:"列表／详情模板需要 row.select → context.open"});});
   }
+  if(!document.listDetail)walk(document.root,node=>{if(node.actions.some(a=>a.event==="record.command"))errors.push({path:`node.${node.id}.actions`,message:"业务命令需要列表／详情数据配置（listDetail）"});});
   if(nodes>500)errors.push({path:"root",message:"最多支持 500 个节点"});return errors;
 }
 export type Target = {parentId:string;slot:string;index:number};

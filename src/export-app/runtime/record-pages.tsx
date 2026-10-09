@@ -8,25 +8,25 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { ContextualShell, RecordFormBody, RuntimeProvider, WorkspacePane, useRecordForm, type RecordAdapter } from "@/runtime/components";
 import { displayValue, type DataRecord, type ListDetail } from "@/runtime/data";
 import { manifest } from "./modules";
-import { href, navigation, STORE_LABEL, useModuleData } from "./app";
+import { href, isReadOnly, navigation, storeLabel, useModuleData } from "./app";
 import { moduleByKey, NONE, repository, withLinks } from "./repository";
 
-function Shell({module, config, record, children}: {module: string; config: ListDetail; record?: DataRecord; children: React.ReactNode}) {
-  const [adapter] = useState<RecordAdapter>(() => ({label: STORE_LABEL, submit: request => repository.submit(module, request)}));
+function Shell({module, config, record, label, children}: {module: string; config: ListDetail; record?: DataRecord; label: string; children: React.ReactNode}) {
+  const adapter: RecordAdapter = {label, submit: request => repository.submit(module, request)};
   return <RuntimeProvider listDetail={config} pageTitle={moduleByKey(module).title} adapter={adapter} navigation={navigation(module)} initialSelectedId={record?.id ?? null}>
     <ContextualShell workspaceName={manifest.workspaceName}><WorkspacePane>{children}</WorkspacePane></ContextualShell>
   </RuntimeProvider>;
 }
 
 export function RecordDetailPage({module, id}: {module: string; id: string}) {
-  const {data, loaded} = useModuleData(module);
-  const target = moduleByKey(module), config = {...withLinks(target, data), rows: data[module]};
+  const {data, loaded, mode, error} = useModuleData(module);
+  const target = moduleByKey(module), config = {...withLinks(target, data), rows: data[module]}, label = storeLabel(module, mode, error);
   const record = data[module].find(row => row.id === id);
-  if (!record) return <Shell module={module} config={config}><p className="record-page">{loaded ? "记录不存在。" : "加载中…"}</p></Shell>;
-  return <Shell module={module} config={config} record={record}><RecordDetail module={module} config={config} record={record}/></Shell>;
+  if (!record) return <Shell module={module} config={config} label={label}><p className="record-page">{loaded ? "记录不存在。" : "加载中…"}</p></Shell>;
+  return <Shell module={module} config={config} record={record} label={label}><RecordDetail module={module} config={config} record={record} label={label} readOnly={isReadOnly(module, mode)}/></Shell>;
 }
 
-function RecordDetail({module, config, record}: {module: string; config: ListDetail; record: DataRecord}) {
+function RecordDetail({module, config, record, label, readOnly}: {module: string; config: ListDetail; record: DataRecord; label: string; readOnly: boolean}) {
   const router = useRouter(), target = moduleByKey(module);
   const [confirm, setConfirm] = useState(false), [deleting, setDeleting] = useState(false);
   const title = displayValue(config, config.titleField, record[config.titleField]);
@@ -40,11 +40,11 @@ function RecordDetail({module, config, record}: {module: string; config: ListDet
   return <article className="record-page">
     <a className="record-back" href={href(module)}><ArrowLeft size={14}/>返回{target.title}</a>
     <header className="record-page-header">
-      <div><span className="page-eyebrow">{config.entityName} · {STORE_LABEL}</span><h1>{title}</h1>{config.descriptionField && <p>{String(record[config.descriptionField])}</p>}</div>
-      <div className="record-page-actions">
+      <div><span className="page-eyebrow">{config.entityName} · {label}</span><h1>{title}</h1>{config.descriptionField && <p>{String(record[config.descriptionField])}</p>}</div>
+      {!readOnly && <div className="record-page-actions">
         <Button asChild variant="outline"><a href={href(module, record.id, "/edit")}><Pencil size={14}/>编辑</a></Button>
         <Button variant="outline" className="record-delete" onClick={() => setConfirm(true)}><Trash2 size={14}/>删除</Button>
-      </div>
+      </div>}
     </header>
     <Card className="runtime-card"><CardHeader><CardTitle>基本信息</CardTitle></CardHeader><CardContent>
       <dl className="record-fields">{fields.map(field => {
@@ -72,19 +72,20 @@ function IncomingLinks({source, field, id}: {source: string; field: string; id: 
 }
 
 export function RecordFormPage({module, id}: {module: string; id?: string}) {
-  const {data, loaded, version} = useModuleData(module);
-  const config = {...withLinks(moduleByKey(module), data), rows: data[module]};
+  const {data, loaded, version, mode, error} = useModuleData(module);
+  const config = {...withLinks(moduleByKey(module), data), rows: data[module]}, label = storeLabel(module, mode, error);
   const record = id ? data[module].find(row => row.id === id) : undefined;
-  if (id && !record) return <Shell module={module} config={config}><p className="record-page">{loaded ? "记录不存在。" : "加载中…"}</p></Shell>;
-  return <Shell module={module} config={config}><RecordForm key={version} module={module} config={config} record={record}/></Shell>;
+  if (isReadOnly(module, mode)) return <Shell module={module} config={config} label={label}><p className="record-page">这个模块的数据由 BFF 提供，不能直接新建或编辑；请在列表详情面板用业务命令办理。</p></Shell>;
+  if (id && !record) return <Shell module={module} config={config} label={label}><p className="record-page">{loaded ? "记录不存在。" : "加载中…"}</p></Shell>;
+  return <Shell module={module} config={config} label={label}><RecordForm key={version} module={module} config={config} record={record} label={label}/></Shell>;
 }
 
-function RecordForm({module, config, record}: {module: string; config: ListDetail; record?: DataRecord}) {
+function RecordForm({module, config, record, label}: {module: string; config: ListDetail; record?: DataRecord; label: string}) {
   const router = useRouter(), back = record ? href(module, record.id) : href(module);
   const form = useRecordForm({config, action: record ? "record.update" : "record.create", record, submit: request => repository.submit(module, request), success: saved => router.push(href(module, saved.id))});
   return <article className="record-page record-form-page">
     <a className="record-back" href={back}><ArrowLeft size={14}/>{record ? "返回详情" : `返回${moduleByKey(module).title}`}</a>
-    <header className="record-page-header"><div><span className="page-eyebrow">{record ? <Pencil size={12}/> : <Plus size={12}/>} {STORE_LABEL}</span>
+    <header className="record-page-header"><div><span className="page-eyebrow">{record ? <Pencil size={12}/> : <Plus size={12}/>} {label}</span>
       <h1>{record ? `编辑${config.entityName}` : `新建${config.entityName}`}</h1><p>{record ? `修改「${record[config.titleField]}」后保存。` : `填写${config.entityName}信息，带 * 的为必填项。`}</p></div></header>
     <Card className="runtime-card"><CardContent className="record-form-card"><RecordFormBody form={form} close={() => router.push(back)} pendingText="正在保存…"/></CardContent></Card>
   </article>;

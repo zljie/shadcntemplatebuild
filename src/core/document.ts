@@ -11,5 +11,5 @@ export function createDocument(empty = false, variant: ShellVariant = "contextua
   if (!empty) root[0].slots.children = variant === "contextual"
     ? [makeNode("pattern.page-header","page-header"),makeNode("composite.search-bar","search-bar"),makeNode("composite.data-table","resource-table")]
     : [makeNode("pattern.page-header","page-header")];
-  return {schemaVersion:"0.1.0",id:"resource-page",name:empty?"未命名页面":"资源管理",shell:{variant,version:"0.1.0",workspaceName:"Acme Workspace"},root,dependencies:{...versions}};
+  return {schemaVersion:versions.pageSchema,id:"resource-page",name:empty?"未命名页面":"资源管理",shell:{variant,version:"0.1.0",workspaceName:"Acme Workspace"},root,dependencies:{...versions}};
 }

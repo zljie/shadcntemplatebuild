@@ -4,6 +4,7 @@ import { Database, Layers3 } from "lucide-react";
 const links = [
   {href: "/projects", label: "我的项目"},
   {href: "/business-models", label: "业务建模"},
+  {href: "/platform", label: "能力平台"},
   {href: "/resources", label: "资源清单"},
   {href: "/apps", label: "业务原型"},
   {href: "/editor", label: "页面设计器"},

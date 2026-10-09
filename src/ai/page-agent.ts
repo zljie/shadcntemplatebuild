@@ -4,6 +4,7 @@ import type { Command } from "../core/commands";
 import { pageProtocol } from "../core/page-protocol";
 import { makeNode } from "../core/registry";
 import { validateDocument, type Issue } from "../core/validation";
+import { upgradeDocument } from "../core/migrations";
 import type { PageDocument } from "../core/schema";
 import type { ChatMessage, LLMProvider, Usage } from "../llm/types";
 
@@ -267,6 +268,8 @@ export async function runPageAgent({
         };
       let commands: unknown[];
       if (envelope.mode === "document") {
+        // Models may echo an older schemaVersion they saw in examples; upgrade like any other stored DSL.
+        envelope.document = upgradeDocument(envelope.document);
         const documentErrors = validateDocument(envelope.document);
         if (documentErrors.length)
           throw new IssueList(
