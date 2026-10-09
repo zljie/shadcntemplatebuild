@@ -1,3 +1,5 @@
+import type { CapabilityDataSource } from "./opc";
+export type { CapabilityDataSource } from "./opc";
 export type Resource = {id:string;name:string;description:string;type:"Skill"|"MCP"|"Document";status:"已发布"|"草稿";version:string;updated:string;author:string};
 export const resources:Resource[]=[
 {id:"res-01",name:"品牌文案助手",description:"基于品牌语调撰写、润色和本地化内容。",type:"Skill",status:"已发布",version:"1.4.0",updated:"2026-09-20",author:"Design Team"},
@@ -31,7 +33,8 @@ export type ListDetail = {
   filters: string[];
   detailFields: string[];
   rows: DataRecord[];
-  dataSource: "example";
+  /** "example": rows above. Capability: rows come from a published query capability; `rows` remain example/offline data. */
+  dataSource: "example" | CapabilityDataSource;
 };
 export const resourceListDetail: ListDetail = {
   entityName: "资源", dataSource: "example", titleField: "name", descriptionField: "description",

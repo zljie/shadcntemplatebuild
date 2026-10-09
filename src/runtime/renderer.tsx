@@ -14,7 +14,7 @@ export function PageRenderer({document,frame,slot,editing=false,adapter,navigati
       const children=nodes.map(render);
       return [name,slot?slot(node,name,children):children];
     }));
-    const extra=node.componentRef==="composite.context-panel"||node.componentRef==="shadcn.tabs"?{editing}:node.componentRef==="composite.data-table"?{openDetails:details&&node.actions.some(a=>a.capabilityRef==="context.open")}:{};
+    const extra=node.componentRef==="composite.context-panel"||node.componentRef==="shadcn.tabs"?{editing}:node.componentRef==="composite.data-table"?{openDetails:details&&node.actions.some(a=>a.capabilityRef==="context.open")}:node.componentRef==="composite.resource-details"&&node.actions.length?{commands:node.actions.filter(a=>a.event==="record.command")}:{};
     const element=<Component key={node.id} {...node.props} layout={node.layout} tokens={node.tokens} responsive={node.responsive} {...extra} slots={slots}/>;
     return frame?frame(node,element):element;
   }

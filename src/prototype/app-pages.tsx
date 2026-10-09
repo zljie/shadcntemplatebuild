@@ -11,6 +11,8 @@ import { displayValue, type DataRecord, type ListDetail } from "@/runtime/data";
 import type { RecordResult } from "@/runtime/records";
 import type { PageDocument } from "@/core/schema";
 import { NONE } from "@/ontology/model";
+import { rowsFromResult, type CapabilityDataSource } from "@/runtime/opc";
+import { createOpcClient } from "@/export-app/runtime/opc-client";
 
 export const STORE_LABEL = "SQLite 数据库";
 export function apiAdapter(objectType: string): RecordAdapter {
@@ -26,8 +28,22 @@ export function apiAdapter(objectType: string): RecordAdapter {
 }
 const href = (type: string, id?: string, suffix = "") => `/apps/${type}${id ? `/${encodeURIComponent(id)}` : ""}${suffix}`;
 
-export function ListDetailApp({document, objectType, navigation}: {document: PageDocument; objectType: string; navigation: Navigation}) {
-  const [adapter] = useState(() => apiAdapter(objectType));
+/** Page DSL 0.2.0 page bound to a published capability: rows come from the BFF (via /api/opc/bff), changes go through business commands. */
+export type LiveSource = {label: string; error?: string};
+function liveAdapter(document: PageDocument, live: LiveSource): RecordAdapter {
+  const client = createOpcClient("/api/opc/bff"), source = document.listDetail!.dataSource as CapabilityDataSource;
+  return {
+    label: live.label, capability: client,
+    async submit() { return {ok: false, errors: [], message: "这个页面的数据来自 BFF，请用详情面板中的业务命令办理"}; },
+    async reload() {
+      const result = await client.query(source.capabilityRef, source.input);
+      if (result.status !== "SUCCEEDED") throw new Error(result.reasons[0]?.message ?? result.status);
+      return rowsFromResult(result.data, source, document.listDetail!.fields);
+    },
+  };
+}
+export function ListDetailApp({document, objectType, navigation, live}: {document: PageDocument; objectType: string; navigation: Navigation; live?: LiveSource}) {
+  const [adapter] = useState(() => live ? liveAdapter(document, live) : apiAdapter(objectType));
   return <PageRenderer document={document} adapter={adapter} navigation={navigation}/>;
 }
 

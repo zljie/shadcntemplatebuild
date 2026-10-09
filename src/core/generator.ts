@@ -22,6 +22,7 @@ export async function generateReact(document:PageDocument,options:{app?:{module:
     if(Object.keys(node.layout).length)props.layout=node.layout;
     if(Object.keys(node.tokens).length)props.tokens=node.tokens;
     if(Object.keys(node.responsive).length)props.responsive=node.responsive;
+    if(node.componentRef==="composite.resource-details"&&node.actions.some(a=>a.event==="record.command"))props.commands=node.actions.filter(a=>a.event==="record.command");
     if(node.componentRef==="composite.data-table")props.openDetails=hasDetailsRegion(document.root)&&node.actions.some(a=>a.capabilityRef==="context.open");
     const attributes=Object.entries(props).sort(([a],[b])=>a<b?-1:1).map(([k,v])=>`${k}={${stableStringify(v)}}`).join(" ");
     const slots=Object.entries(node.slots).sort(([a],[b])=>a.localeCompare(b)).map(([name,nodes])=>`${JSON.stringify(name)}:<>${nodes.map(emit).join("\n")}</>`).join(",\n");

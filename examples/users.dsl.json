@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.2.0",
   "id": "user-management",
   "name": "用户管理",
   "shell": {
@@ -114,10 +114,10 @@
     }
   ],
   "dependencies": {
-    "pageSchema": "0.1.0",
+    "pageSchema": "0.2.0",
     "componentRegistry": "0.1.0",
     "designTokens": "provisional-0.1.0",
-    "codeGenerator": "0.1.0"
+    "codeGenerator": "0.2.0"
   },
   "listDetail": {
     "entityName": "用户",

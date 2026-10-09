@@ -22,7 +22,22 @@ export type Migrations = {
 };
 
 // Add a step here whenever pageSchema or a component's props change shape, then bump the version in schema.ts.
-export const migrations: Migrations = { document: [], component: [] };
+export const migrations: Migrations = {
+  document: [
+    // 0.2.0 only adds optional shapes (record.command actions, capability data source); the code generator moves with it.
+    {
+      from: "0.1.0",
+      to: "0.2.0",
+      migrate: (document) => ({
+        ...document,
+        ...(isObject(document.dependencies)
+          ? { dependencies: { ...document.dependencies, codeGenerator: "0.2.0" } }
+          : {}),
+      }),
+    },
+  ],
+  component: [],
+};
 
 export type MigrationResult = { document: unknown; applied: string[] };
 const isObject = (value: unknown): value is Json =>

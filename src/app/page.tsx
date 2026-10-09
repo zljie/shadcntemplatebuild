@@ -256,7 +256,7 @@ const footerLinks: { group: string; links: [string, string][] }[] = [
 ];
 
 const dsl = `{
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.2.0",
   "shell": { "variant": "contextual" },
   "root": [{
     "componentRef": "region.workspace",

@@ -15,7 +15,7 @@ const formExample = {
 export function componentCapabilities() {
   return Object.entries(registry).map(([componentRef, { schema, ...definition }]) => ({
     componentRef, ...definition, propsSchema: z.toJSONSchema(schema),
-    actions: componentRef === "composite.data-table" ? [{event:"row.select",capabilityRef:"context.open"}] : [],
+    actions: componentRef === "composite.data-table" ? [{event:"row.select",capabilityRef:"context.open"}] : componentRef === "composite.resource-details" ? [{event:"record.command",capabilityRef:"Domain.Name (published business capability)",arguments:"input key → {from:'row',field}|{from:'form',label,type,required?,field?}|{from:'const',value}",confirm:"true = PREVIEW → confirm → EXECUTE → receipt",result:"{onSuccess:{notice?,refresh,receipt?:[{key,label}]},onRejected:{notice?}}"}] : [],
     dynamicSlots: componentRef === "layout.stack" ? ["slot-1","slot-2","slot-3","slot-4","slot-5"] : [],
     runtimeActions: componentRef === "pattern.page-header" ? ["record.create"] : componentRef === "composite.resource-details" ? ["record.update"] : [],
   }));
@@ -32,11 +32,11 @@ export function pageProtocol() {
       "Nodes may carry meta.permissions {delete,move,duplicate,edit}; false blocks that operation for every editor, AI and MCP. Respect them and never add or change meta.permissions.",
       "listDetail is optional: absent means legacy resource example. With it, exactly one header, search, table and details is required; table needs row.select -> context.open.",
       "listDetail defines one shared dataset. Fields have unique keys (id, constructor, prototype and __proto__ are reserved). All field references must exist and each reference list must be unique.",
-      "Every row has a unique nonempty id, exactly the declared fields and matching primitive types. Maximum 200 rows. dataSource must be example.",
+      "Every row has a unique nonempty id, exactly the declared fields and matching primitive types. Maximum 200 rows. dataSource is \"example\", or (Page DSL 0.2.0) {type:'capability',capabilityRef:'Domain.Name',input:{},idField,fieldPaths?} to read a published query capability through the BFF; rows then stay as example/offline data.",
       "Search matches the combined configured searchFields (case insensitive substring). Filters derive options from rows, combine with AND, and use string values; boolean values use true/false with configurable labels.",
       "Put titleField in columns so the name opens details. Use the same title in document.name and page-header props. context props.title names the details panel.",
       "Keep the shared Shell, default spacing and theme. Details use the same desktop panel and narrow-screen Dialog. New pages show SIMULATION 示例数据.",
-      "To enable shared create/edit Dialog, set listDetail.form = {fields:[editable field keys],uniqueField:required editable text key,actions:['record.create','record.update']}. Never put these runtime actions in node.actions, which only supports row.select -> context.open.",
+      "To enable shared create/edit Dialog, set listDetail.form = {fields:[editable field keys],uniqueField:required editable text key,actions:['record.create','record.update']}. Never put these runtime actions in node.actions: the data table only supports row.select -> context.open, and composite.resource-details may carry up to 4 record.command actions that run published business commands (only bind capabilityRefs that exist in the active release; MCP never invents them).",
       "Define field default, required, minLength/maxLength (text), min/max/integer (number), or options:[{label,value}] for single enum. Option primitives must match field type; editable booleans require enum options. Form fields follow configured order. All fields need defaults for create; required editable text may start empty. Read-only fields are omitted from form.fields and retained on edit.",
       "Bound text to at most 1000 characters and numbers to +/-1e9. Existing rows must satisfy field constraints. uniqueField rejects duplicate values in its own dataset as repeatable simulated failure. For books use title (demo-only uniqueness), users use account. Never add passwords or URLs.",
       "Books edit title/author/category/inventory; nonnegative integer inventory, loanStatus read-only with create default 可借阅. Users edit name/account/role/enabled; role and enabled use enums, all four required. Match enum defaults and row values.",

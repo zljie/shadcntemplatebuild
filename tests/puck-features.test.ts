@@ -3,7 +3,7 @@ import { createDocument } from "../src/core/document";
 import { execute, type Command, type Result } from "../src/core/commands";
 import { makeNode, registry } from "../src/core/registry";
 import { validateDocument, locate } from "../src/core/validation";
-import { migrateDocument, type Migrations } from "../src/core/migrations";
+import { migrateDocument, migrations, type Migrations } from "../src/core/migrations";
 import { resolvePermissions } from "../src/core/permissions";
 import { applyCommands, componentSummaries } from "../src/core/agent-ops";
 import { runPageAgent, buildSystemPrompt } from "../src/ai/page-agent";
@@ -47,6 +47,8 @@ describe("data migrations", () => {
         to: "0.1.0",
         migrate: (doc) => ({ ...doc, name: `${doc.name}（已升级）` }),
       },
+      // then the real chain to the current version
+      ...migrations.document,
     ],
     component: [
       {
@@ -75,6 +77,7 @@ describe("data migrations", () => {
     expect(JSON.stringify(legacy)).toBe(snapshot);
     expect(applied).toEqual([
       "document 0.0.9 → 0.1.0",
+      "document 0.1.0 → 0.2.0",
       "pattern.page-header 0.0.9 → 0.1.0",
     ]);
     expect(validateDocument(document)).toEqual([]);
