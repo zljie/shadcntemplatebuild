@@ -44,7 +44,7 @@ describe("Page DSL 0.2.0", () => {
       expect((document as PageDocument).dependencies).toMatchObject({ pageSchema: "0.2.0", codeGenerator: "0.2.0" });
     }
     for (const name of ["books", "users"]) {
-      const legacy = JSON.parse(execFileSync("git", ["show", `main:examples/${name}.dsl.json`], { encoding: "utf8" }));
+      const legacy = JSON.parse(execFileSync("git", ["show", `d95e5e2:examples/${name}.dsl.json`], { encoding: "utf8" }));
       expect(legacy.schemaVersion).toBe("0.1.0");
       expect(validateDocument(legacy).length).toBeGreaterThan(0);
       expect(validateDocument(upgradeDocument(legacy))).toEqual([]);
