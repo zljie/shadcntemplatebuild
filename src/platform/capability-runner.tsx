@@ -65,7 +65,7 @@ export function CapabilityRunner({capabilities, releaseId}: {capabilities: Capab
         {identityIndex === devIdentities.length && <div className="model-grid-2">
           <label className="model-field">actor<input value={custom.actor} onChange={e => setCustom({...custom, actor: e.target.value})} placeholder="u_librarian"/></label>
           <label className="model-field">roles<input value={custom.roles} onChange={e => setCustom({...custom, roles: e.target.value})} placeholder="LIBRARIAN,READER"/></label></div>}
-        {fields.length ? fields.map(f => <label key={f.key} className="model-field">{f.key}{f.required && <span aria-hidden="true"> *</span>}
+        {fields.length ? fields.map(f => <label key={f.key} className="model-field"><span className="platform-field-name">{f.key}{f.required && <span aria-hidden="true">*</span>}</span>
           {f.kind === "enum" || f.kind === "boolean" ? <select name={f.key} value={current[f.key] ?? ""} onChange={e => setValues({...values, [ref]: {...current, [f.key]: e.target.value}})}>
             <option value="">（不填）</option>{(f.kind === "boolean" ? ["true", "false"] : f.options!).map(o => <option key={o}>{o}</option>)}</select>
             : <input name={f.key} value={current[f.key] ?? ""} inputMode={f.kind === "integer" || f.kind === "number" ? "numeric" : undefined} aria-invalid={!!errors[f.key]}

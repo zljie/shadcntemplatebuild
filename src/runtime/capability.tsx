@@ -107,7 +107,9 @@ function CommandDialog({command, row, close}: {command: CommandAction; row: Data
 }
 
 function ResultView({result, command}: {result: CapabilityResult; command: CommandAction}) {
-  const receipt = command.result.onSuccess.receipt ?? [];
+  // Configured receipt labels; otherwise a flat result object is listed by key, anything else shown as JSON.
+  const data = result.data, flat = !!data && typeof data === "object" && !Array.isArray(data) && Object.values(data).every(v => v === null || typeof v !== "object");
+  const receipt = command.result.onSuccess.receipt ?? (flat ? Object.keys(data as object).map(key => ({key, label: key})) : []);
   const shown = receipt.filter(r => valueAt(result.data, r.key) !== undefined);
   return <section className="command-result" data-status={result.status} aria-live="polite">
     <header><span className={`command-status status-${result.status.toLowerCase()}`}>{result.phase === "PREVIEW" ? "预览" : "执行"}{statusLabels[result.status]}</span><code>{result.requestId}</code></header>

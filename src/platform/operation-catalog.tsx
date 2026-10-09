@@ -29,7 +29,7 @@ export function OperationCatalog({operations, inRelease, releaseId}: {operations
           <td><span className={`platform-chip ${o.status === "approved" ? "ok" : "bad"}`}>{o.status === "approved" ? "已启用" : "已停用"}</span>{used.has(o.operationId) && <p><span className="platform-chip info">发布中</span></p>}</td>
         </tr>)}</tbody></table>
         {!visible.length && <Empty>{operations.length ? "没有匹配的 Operation" : "这个模型包还没有登记 Operation：在数据映射页编译映射"}</Empty>}</div></div>
-      {selected ? <div className="platform-card" aria-label={`Operation ${selected.operationId}`}>
+      {selected ? <section className="platform-card" aria-label={`Operation ${selected.operationId}`}>
         <header><div><h3>{selected.operationId}</h3><p className="platform-mono">{selected.packageRef.id}@{selected.version}</p></div><span className={`platform-chip ${selected.status === "approved" ? "ok" : "bad"}`}>{selected.status}</span></header>
         <dl className="platform-kv">
           <dt>授权 Action</dt><dd><code>{selected.actionId}</code>（角色与模型 Action 的 allowedRoles 一致）</dd>
@@ -41,7 +41,7 @@ export function OperationCatalog({operations, inRelease, releaseId}: {operations
         </dl>
         <div><h4>固定 GraphQL 文档</h4><pre className="platform-json">{selected.document}</pre></div>
         <div><h4>变量 Schema</h4><pre className="platform-json">{JSON.stringify(selected.variablesSchema, null, 2)}</pre></div>
-      </div> : <div className="platform-card"><Empty>选择一个 Operation 查看文档</Empty></div>}
+      </section> : <div className="platform-card"><Empty>选择一个 Operation 查看文档</Empty></div>}
     </div>
   </>;
 }
